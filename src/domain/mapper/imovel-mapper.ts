@@ -1,7 +1,8 @@
 import { Result } from "../../shared/result"
 import { ErroValidacao } from "../imovel/erro-validacao"
 import { Imovel } from "../imovel/imovel"
-import { Moeda, PeriodoPreco } from "../imovel/preco"
+import { Preco, Moeda, PeriodoPreco } from "../imovel/preco"
+import { isFinalidade } from "../imovel/finalidade"
 import { ImovelDto } from "./imovel-dto"
 
 export function imovelParaDto(imovel: Imovel): ImovelDto {
@@ -24,7 +25,7 @@ export function imovelParaDto(imovel: Imovel): ImovelDto {
     casasBanho: imovel.caracteristicas.casasBanho,
     caracteristicas: [...imovel.caracteristicas.lista],
     fotoPrincipal: imovel.media.fotoPrincipal,
-    extras: imovel.extras,
+    extras: { ...imovel.extras },
     ativo: imovel.estado.ativo,
     extraidoEm: imovel.estado.extraidoEm,
     atualizadoEm: imovel.estado.atualizadoEm,
@@ -33,6 +34,12 @@ export function imovelParaDto(imovel: Imovel): ImovelDto {
 }
 
 export function dtoParaImovel(dto: ImovelDto): Result<Imovel, ErroValidacao[]> {
+  const periodo: PeriodoPreco = dto.periodoPreco
+    ? (dto.periodoPreco as PeriodoPreco)
+    : isFinalidade(dto.finalidade)
+      ? Preco.periodoEsperado(dto.finalidade)
+      : "TOTAL"
+
   return Imovel.criar({
     ref: dto.ref,
     clienteId: dto.clienteId,
@@ -41,7 +48,7 @@ export function dtoParaImovel(dto: ImovelDto): Result<Imovel, ErroValidacao[]> {
     preco: {
       valor: dto.preco,
       moeda: dto.moeda as Moeda,
-      periodo: (dto.periodoPreco ?? "TOTAL") as PeriodoPreco,
+      periodo,
     },
     localizacao: {
       zonaTexto: dto.zonaTexto,

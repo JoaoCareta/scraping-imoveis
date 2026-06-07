@@ -35,6 +35,16 @@ describe("imovelParaDto", () => {
   })
 })
 
+describe("imovelParaDto extras imutabilidade", () => {
+  it("mutação do dto.extras não afecta os extras do imóvel original", () => {
+    const r = Imovel.criar(props())
+    if (!r.ok) throw new Error("setup inválido")
+    const dto = imovelParaDto(r.value)
+    dto.extras["novaClave"] = "injectado"
+    expect(r.value.extras["novaClave"]).toBeUndefined()
+  })
+})
+
 describe("dtoParaImovel (round-trip)", () => {
   it("DTO -> Imovel -> DTO preserva os campos", () => {
     const original = Imovel.criar(props())
@@ -46,6 +56,27 @@ describe("dtoParaImovel (round-trip)", () => {
     if (reconstruido.ok) {
       expect(imovelParaDto(reconstruido.value)).toEqual(dto)
     }
+  })
+
+  it("ALUGUER sem periodoPreco deriva MENSAL automaticamente", () => {
+    const r = Imovel.criar({
+      ref: "REF-ALUG",
+      clienteId: "cli",
+      urlSite: "https://imob.pt/imovel/alug",
+      finalidade: "ALUGUER",
+      preco: { valor: 900, moeda: "EUR", periodo: "MENSAL" },
+      localizacao: { zonaTexto: "Faro" },
+      caracteristicas: { lista: [] },
+      media: {},
+      extras: {},
+      estado: { ativo: true, extraidoEm: "2026-06-07T10:00:00.000Z", atualizadoEm: "2026-06-07T10:00:00.000Z", hashConteudo: "ha1" },
+    })
+    if (!r.ok) throw new Error("setup inválido")
+    const dto = imovelParaDto(r.value)
+    const { periodoPreco, ...semPeriodo } = dto
+    const resultado = dtoParaImovel(semPeriodo as typeof dto)
+    expect(resultado.ok).toBe(true)
+    if (resultado.ok) expect(resultado.value.preco.periodo).toBe("MENSAL")
   })
 
   it("propaga erros de validação de um DTO inválido", () => {

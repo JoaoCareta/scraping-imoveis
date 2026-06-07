@@ -51,6 +51,16 @@ describe("Imovel.criar", () => {
   })
 })
 
+describe("Imovel imutabilidade de extras", () => {
+  it("mutação do objecto original não afecta os extras do imóvel criado", () => {
+    const original: Record<string, unknown> = { piso: 3 }
+    const r = Imovel.criar({ ...propsValidas(), extras: original })
+    original["piso"] = 99
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.extras["piso"]).toBe(3)
+  })
+})
+
 describe("Imovel comportamento de estado", () => {
   const base = () => {
     const r = Imovel.criar(propsValidas())

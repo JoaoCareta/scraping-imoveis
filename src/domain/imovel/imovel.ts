@@ -65,7 +65,8 @@ export class Imovel {
 
     if (erros.length > 0) return err(erros)
 
-    // Guarda de narrowing: inalcançável com erros vazios, mas estreita os tipos para o construtor.
+    // Guarda de narrowing: inalcançável (acima já retornámos se houve erros).
+    // Existe só para o TypeScript estreitar os Result para o construtor — não lança.
     if (!refR.ok || !urlR.ok || !precoR.ok || !locR.ok || !finalidadeValida) {
       return err(erros)
     }
@@ -80,7 +81,7 @@ export class Imovel {
         locR.value,
         props.caracteristicas,
         props.media,
-        props.extras,
+        { ...props.extras },
         props.estado,
       ),
     )
