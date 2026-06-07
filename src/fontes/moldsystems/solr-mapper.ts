@@ -1,3 +1,6 @@
+import { Result } from "../../shared/result"
+import { ErroValidacao } from "../../domain/imovel/erro-validacao"
+import { Imovel } from "../../domain/imovel/imovel"
 import { Finalidade } from "../../domain/imovel/finalidade"
 import { PeriodoPreco } from "../../domain/imovel/preco"
 import { PropsLocalizacao } from "../../domain/imovel/localizacao"
@@ -120,4 +123,37 @@ export function extrasDeDoc(doc: MoldSystemsSolrDoc): Record<string, unknown> {
   if (doc.idtTenant != null) e["idtTenant"] = doc.idtTenant
   if (doc.namState != null) e["estadoNome"] = doc.namState
   return e
+}
+
+export function imoveisDeSolrDoc(
+  doc: MoldSystemsSolrDoc,
+  ctx: MoldSystemsContexto,
+): Array<Result<Imovel, ErroValidacao[]>> {
+  const operacoes = finalidadesDeDoc(doc)
+  const localizacao = localizacaoDeDoc(doc)
+  const caracteristicas = caracteristicasDeDoc(doc)
+  const media = { fotoPrincipal: fotoPrincipalDeDoc(doc) }
+  const extras = extrasDeDoc(doc)
+  const ativo = ativoDeDoc(doc)
+  const ref = String(doc.idtProperty)
+
+  return operacoes.map((op) =>
+    Imovel.criar({
+      ref,
+      clienteId: ctx.clienteId,
+      urlSite: urlSiteDeDoc(doc, ctx, op.finalidade),
+      finalidade: op.finalidade,
+      preco: { valor: op.valor, moeda: "BRL", periodo: op.periodo },
+      localizacao,
+      caracteristicas,
+      media,
+      extras,
+      estado: {
+        ativo,
+        extraidoEm: ctx.extraidoEm,
+        atualizadoEm: doc.dtaUpdate ?? ctx.extraidoEm,
+        hashConteudo: String(doc.dtaUpdate ?? ctx.extraidoEm),
+      },
+    }),
+  )
 }

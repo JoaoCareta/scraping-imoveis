@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { finalidadesDeDoc, localizacaoDeDoc, caracteristicasDeDoc, urlSiteDeDoc, fotoPrincipalDeDoc, ativoDeDoc, extrasDeDoc } from "./solr-mapper"
+import { finalidadesDeDoc, localizacaoDeDoc, caracteristicasDeDoc, urlSiteDeDoc, fotoPrincipalDeDoc, ativoDeDoc, extrasDeDoc, imoveisDeSolrDoc } from "./solr-mapper"
 import { imovel1910 } from "./fixtures/imovel-1910"
 
 const CTX = { clienteId: "innove", origin: "https://imobiliariainnove.com.br", extraidoEm: "2026-06-07T12:00:00.000Z" }
@@ -73,5 +73,38 @@ describe("helpers de doc", () => {
     expect(e["vagas"]).toBe(2)
     expect(e["condominio"]).toBe(940)
     expect(e["iptu"]).toBe(105)
+  })
+})
+
+describe("imoveisDeSolrDoc (integração com COD 1910 real)", () => {
+  it("produz 1 imóvel ALUGUER válido com os campos corretos", () => {
+    const resultados = imoveisDeSolrDoc(imovel1910, CTX)
+    expect(resultados).toHaveLength(1)
+    const r = resultados[0]
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      const im = r.value
+      expect(im.ref.valor).toBe("1910")
+      expect(im.finalidade).toBe("ALUGUER")
+      expect(im.preco.valor).toBe(1050)
+      expect(im.preco.moeda).toBe("BRL")
+      expect(im.preco.periodo).toBe("MENSAL")
+      expect(im.localizacao.cidade).toBe("Araçatuba")
+      expect(im.localizacao.bairro).toBe("Vila Estádio")
+      expect(im.caracteristicas.quartos).toBe(2)
+      expect(im.caracteristicas.areaM2).toBe(96)
+      expect(im.caracteristicas.casasBanho).toBe(2)
+      expect(im.extras["vagas"]).toBe(2)
+      expect(im.extras["condominio"]).toBe(940)
+      expect(im.estado.ativo).toBe(true)
+      expect(im.urlSite.valor).toContain("/imovel/locacao/apartamentos/aracatuba/")
+      expect(im.urlSite.valor).toContain("/1910")
+    }
+  })
+
+  it("produz dois imóveis (ALUGUER+VENDA) quando há os dois valores", () => {
+    const dual = { ...imovel1910, valSales: 350000 }
+    const r = imoveisDeSolrDoc(dual, CTX)
+    expect(r.map((x) => (x.ok ? x.value.finalidade : "ERR"))).toEqual(["ALUGUER", "VENDA"])
   })
 })
