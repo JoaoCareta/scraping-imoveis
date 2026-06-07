@@ -63,3 +63,42 @@ O site expõe **todos os campos de que o domínio precisa**, é **SSR Next.js**,
 ## Implicações para a spec
 - Reenquadrar §4.2 ("adaptador por cliente") para **adaptador por plataforma + config por inquilino** quando a plataforma é partilhada (ex.: MoldSystems).
 - Fase 4: prever passo de **descoberta de API** (Playwright a observar a rede) com fallback DOM-Cheerio; proibir dependência de classes CSS com hash.
+
+---
+
+## API da plataforma MoldSystems — DECIFRADA (2026-06-07)
+
+A plataforma expõe uma **API Solr com JSON limpo e completo**. Para clientes MoldSystems o adaptador é um **cliente de API**, não scraping de DOM (sem Playwright/Cheerio, sem classes CSS). Scripts: `spikes/api-*.mjs`, `spikes/imovel-1910-campos.mjs`.
+
+### Endpoint
+`GET {origin}/api/solr/search/{query}` onde `{query} = encodeURI(JSON.stringify(obj))`.
+
+- **Por id/código:** `{ "idtsPropertys": [1910], "numRows": 1000 }` → `response.docs` com o imóvel.
+- **Catálogo:** `{ "numRows": 1000 }` → `response.numFound` (total) + `docs` (paginável via numRows/start).
+- Resposta no formato Solr: `{ response: { numFound, docs: [...] } }`.
+- **`idtProperty` é o próprio código** (COD 1910 = idtProperty 1910) → join key trivial com a planilha do Marketplace.
+- Rotas Next.js subjacentes: `/[imob]/api/solr/search/[query]`, `/[imob]/api/solr/search/ids`.
+
+### Outros endpoints úteis
+`/api/autocomplete/?q=` (200 JSON), `/api/solr/list/{city|district|categories|condominium|tags|...}`, `/api/site/page`, `/api/site/template`.
+
+### Campos Solr → nosso domínio (exemplo COD 1910)
+| Solr | Valor (1910) | → ImovelDto |
+|---|---|---|
+| `idtProperty` | 1910 | `ref` |
+| `indType` | "L"=locação · "SL"=venda+locação | `finalidade` (L→ALUGUER; com venda→VENDA) |
+| `valLocation` / `valSales` | 1050 | `preco` (MENSAL/TOTAL, BRL) |
+| `valCondominium` / `valMonthIptu` | 940 / 105 | `extras` |
+| `totalRooms` | 2 | `quartos` |
+| `totalGarages` | 2 | `extras.vagas` |
+| `namCategory` / `namSubCategory` | Apartamentos / Padrão | `tipoImovel` / `tipologia` |
+| `namDistrict` / `namCity` / `namState` | Vila Estádio / Araçatuba / São Paulo | `bairro` / `cidade` / `estado` |
+| `jsonCharacteristics` | área 96 m², banheiros 2… | `areaM2`, `casasBanho`, `extras` |
+| `jsonPhotos` | [urls S3] | `fotoPrincipal` |
+| `desUriLandingPage` + slugs | …park-mediterraneo | construir `urlSite` |
+| `flgShowSite` / `indStatus` / `indBusy` | — | `estado.ativo` |
+
+### Implicação arquitetural (Fase 4)
+- **`FonteDeImoveis`** ganha (pelo menos) duas implementações: **API** (MoldSystems, `MoldSystemsFonte`) e **DOM** (Cheerio/Playwright, para sites sem API). MoldSystems é a primeira.
+- **Uma integração serve todos os inquilinos MoldSystems** (varia `origin` + `namSchema`).
+- Os **normalizadores (Fase 2)** servem o caminho **DOM**; no caminho **API** os dados já vêm tipados → mapeamento de campos, não parsing de texto.
