@@ -15,4 +15,14 @@ describe("parsearNumeroBr", () => {
     expect(parsearNumeroBr("sem valor")).toBeNull()
     expect(parsearNumeroBr("")).toBeNull()
   })
+
+  it("interpreta valores grandes (milhões)", () => {
+    expect(parsearNumeroBr("R$ 1.234.567,89")).toBe(1234567.89)
+  })
+  it("limitação documentada: grupo de pontos curto lê só o inteiro", () => {
+    expect(parsearNumeroBr("1.23")).toBe(1)
+  })
+  it("zero é número válido", () => {
+    expect(parsearNumeroBr("0")).toBe(0)
+  })
 })

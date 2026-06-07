@@ -13,4 +13,9 @@ describe("parsearAreaM2", () => {
     expect(parsearAreaM2("3 quartos")).toBeNull()
     expect(parsearAreaM2("")).toBeNull()
   })
+
+  it("não confunde 'km' nem texto sem m² com área", () => {
+    expect(parsearAreaM2("3 km até o centro")).toBeNull()
+    expect(parsearAreaM2("apartamento")).toBeNull()
+  })
 })

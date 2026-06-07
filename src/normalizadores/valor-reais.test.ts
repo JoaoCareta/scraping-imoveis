@@ -12,4 +12,12 @@ describe("parsearValorReais", () => {
     expect(parsearValorReais("120 m²")).toBeNull()
     expect(parsearValorReais("")).toBeNull()
   })
+
+  it("aceita sem espaço e em minúsculas", () => {
+    expect(parsearValorReais("R$1.500")).toBe(1500)
+    expect(parsearValorReais("r$ 900,00")).toBe(900)
+  })
+  it("R$ sem número devolve null", () => {
+    expect(parsearValorReais("R$")).toBeNull()
+  })
 })
