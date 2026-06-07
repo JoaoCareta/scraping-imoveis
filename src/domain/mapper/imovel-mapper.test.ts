@@ -7,7 +7,7 @@ const props = (): PropsImovel => ({
   clienteId: "cli",
   urlSite: "https://imob.pt/imovel/9",
   finalidade: "VENDA",
-  preco: { valor: 250000, moeda: "EUR", periodo: "TOTAL" },
+  preco: { valor: 250000, moeda: "BRL", periodo: "TOTAL" },
   localizacao: { zonaTexto: "Braga", concelho: "Braga" },
   caracteristicas: { tipoImovel: "Apartamento", tipologia: "T3", areaM2: 120, quartos: 3, casasBanho: 2, lista: ["elevador"] },
   media: { fotoPrincipal: "https://imob.pt/f9.jpg" },
@@ -24,7 +24,7 @@ describe("imovelParaDto", () => {
     expect(dto.ref).toBe("REF-9")
     expect(dto.urlSite).toBe("https://imob.pt/imovel/9")
     expect(dto.preco).toBe(250000)
-    expect(dto.moeda).toBe("EUR")
+    expect(dto.moeda).toBe("BRL")
     expect(dto.periodoPreco).toBe("TOTAL")
     expect(dto.zonaTexto).toBe("Braga")
     expect(dto.tipologia).toBe("T3")
@@ -64,7 +64,7 @@ describe("dtoParaImovel (round-trip)", () => {
       clienteId: "cli",
       urlSite: "https://imob.pt/imovel/alug",
       finalidade: "ALUGUER",
-      preco: { valor: 900, moeda: "EUR", periodo: "MENSAL" },
+      preco: { valor: 900, moeda: "BRL", periodo: "MENSAL" },
       localizacao: { zonaTexto: "Faro" },
       caracteristicas: { lista: [] },
       media: {},

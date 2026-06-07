@@ -2,7 +2,7 @@ import { Result, ok, err } from "../../shared/result"
 import { ErroValidacao, erroValidacao } from "./erro-validacao"
 import { Finalidade } from "./finalidade"
 
-export type Moeda = "EUR"
+export type Moeda = "BRL"
 export type PeriodoPreco = "MENSAL" | "TOTAL"
 
 export class Preco {

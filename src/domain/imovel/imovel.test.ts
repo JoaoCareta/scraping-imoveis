@@ -6,7 +6,7 @@ const propsValidas = (): PropsImovel => ({
   clienteId: "cliente-a",
   urlSite: "https://imob.pt/imovel/1",
   finalidade: "ALUGUER",
-  preco: { valor: 800, moeda: "EUR", periodo: "MENSAL" },
+  preco: { valor: 800, moeda: "BRL", periodo: "MENSAL" },
   localizacao: { zonaTexto: "Porto" },
   caracteristicas: { lista: ["garagem"] },
   media: {},
@@ -27,7 +27,7 @@ describe("Imovel.criar", () => {
   })
 
   it("acumula múltiplos erros de validação", () => {
-    const r = Imovel.criar({ ...propsValidas(), ref: "  ", urlSite: "xpto", preco: { valor: -1, moeda: "EUR", periodo: "MENSAL" } })
+    const r = Imovel.criar({ ...propsValidas(), ref: "  ", urlSite: "xpto", preco: { valor: -1, moeda: "BRL", periodo: "MENSAL" } })
     expect(r.ok).toBe(false)
     if (!r.ok) {
       const campos = r.error.map((e) => e.campo)
@@ -45,7 +45,7 @@ describe("Imovel.criar", () => {
   })
 
   it("rejeita período incoerente com a finalidade (VENDA exige TOTAL)", () => {
-    const r = Imovel.criar({ ...propsValidas(), finalidade: "VENDA", preco: { valor: 200000, moeda: "EUR", periodo: "MENSAL" } })
+    const r = Imovel.criar({ ...propsValidas(), finalidade: "VENDA", preco: { valor: 200000, moeda: "BRL", periodo: "MENSAL" } })
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error.map((e) => e.campo)).toContain("preco.periodo")
   })
