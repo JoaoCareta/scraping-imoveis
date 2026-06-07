@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { finalidadeDeUrl, tipoImovelDeUrl, cidadeDeUrl } from "./url"
+import { finalidadeDeUrl, tipoImovelDeUrl, cidadeDeUrl, refDeUrl } from "./url"
 
 const ALUG = "https://imobiliariainnove.com.br/imovel/locacao/apartamentos/aracatuba/conjunto-habitacional-pedro-perri/2937"
 const VENDA = "https://imobiliariainnove.com.br/imovel/venda/casas/aracatuba/centro/1000"
@@ -38,5 +38,18 @@ describe("cidadeDeUrl", () => {
 
   it("devolve null sem segmento de cidade", () => {
     expect(cidadeDeUrl("https://x.com/")).toBeNull()
+  })
+})
+
+describe("refDeUrl", () => {
+  it("devolve o último segmento (o código)", () => {
+    expect(refDeUrl(ALUG)).toBe("2937")
+    expect(refDeUrl(VENDA)).toBe("1000")
+    expect(refDeUrl("https://x/imovel/locacao/casas/aracatuba/sao-rafael/18")).toBe("18")
+  })
+
+  it("devolve null para URL sem segmentos", () => {
+    expect(refDeUrl("https://x.com/")).toBeNull()
+    expect(refDeUrl("")).toBeNull()
   })
 })

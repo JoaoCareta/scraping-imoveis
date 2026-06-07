@@ -44,3 +44,11 @@ export function cidadeDeUrl(url: string): string | null {
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(" ")
 }
+
+export function refDeUrl(url: string): string | null {
+  const segs = segmentosImovel(url)
+  const ultimo = segs[segs.length - 1]
+  if (!ultimo) return null
+  const limpo = ultimo.trim()
+  return limpo.length > 0 ? limpo : null
+}
