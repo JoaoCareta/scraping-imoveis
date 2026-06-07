@@ -19,4 +19,10 @@ describe("Ref", () => {
     const b = Ref.criar("X1")
     if (a.ok && b.ok) expect(a.value.equals(b.value)).toBe(true)
   })
+
+  it("equals devolve false para referências diferentes", () => {
+    const a = Ref.criar("X1")
+    const b = Ref.criar("X2")
+    if (a.ok && b.ok) expect(a.value.equals(b.value)).toBe(false)
+  })
 })

@@ -17,4 +17,10 @@ describe("Localizacao", () => {
     expect(l.ok).toBe(false)
     if (!l.ok) expect(l.error.campo).toBe("zonaTexto")
   })
+
+  it("normaliza opcional só-espaços para undefined", () => {
+    const l = Localizacao.criar({ zonaTexto: "Faro", concelho: "   " })
+    expect(l.ok).toBe(true)
+    if (l.ok) expect(l.value.concelho).toBeUndefined()
+  })
 })
