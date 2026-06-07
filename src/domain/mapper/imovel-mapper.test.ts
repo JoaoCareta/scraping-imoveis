@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { Imovel, PropsImovel } from "../imovel/imovel"
-import { imovelParaDto } from "./imovel-mapper"
+import { imovelParaDto, dtoParaImovel } from "./imovel-mapper"
 
 const props = (): PropsImovel => ({
   ref: "REF-9",
@@ -32,5 +32,29 @@ describe("imovelParaDto", () => {
     expect(dto.extras["certificado"]).toBe("B")
     expect(dto.ativo).toBe(true)
     expect(dto.hashConteudo).toBe("h9")
+  })
+})
+
+describe("dtoParaImovel (round-trip)", () => {
+  it("DTO -> Imovel -> DTO preserva os campos", () => {
+    const original = Imovel.criar(props())
+    if (!original.ok) throw new Error("setup inválido")
+    const dto = imovelParaDto(original.value)
+
+    const reconstruido = dtoParaImovel(dto)
+    expect(reconstruido.ok).toBe(true)
+    if (reconstruido.ok) {
+      expect(imovelParaDto(reconstruido.value)).toEqual(dto)
+    }
+  })
+
+  it("propaga erros de validação de um DTO inválido", () => {
+    const original = Imovel.criar(props())
+    if (!original.ok) throw new Error("setup inválido")
+    const dto = imovelParaDto(original.value)
+    const invalido = { ...dto, preco: -10 }
+
+    const r = dtoParaImovel(invalido)
+    expect(r.ok).toBe(false)
   })
 })

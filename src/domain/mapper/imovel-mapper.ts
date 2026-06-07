@@ -1,4 +1,7 @@
+import { Result } from "../../shared/result"
+import { ErroValidacao } from "../imovel/erro-validacao"
 import { Imovel } from "../imovel/imovel"
+import { Moeda, PeriodoPreco } from "../imovel/preco"
 import { ImovelDto } from "./imovel-dto"
 
 export function imovelParaDto(imovel: Imovel): ImovelDto {
@@ -27,4 +30,40 @@ export function imovelParaDto(imovel: Imovel): ImovelDto {
     atualizadoEm: imovel.estado.atualizadoEm,
     hashConteudo: imovel.estado.hashConteudo,
   }
+}
+
+export function dtoParaImovel(dto: ImovelDto): Result<Imovel, ErroValidacao[]> {
+  return Imovel.criar({
+    ref: dto.ref,
+    clienteId: dto.clienteId,
+    urlSite: dto.urlSite,
+    finalidade: dto.finalidade,
+    preco: {
+      valor: dto.preco,
+      moeda: dto.moeda as Moeda,
+      periodo: (dto.periodoPreco ?? "TOTAL") as PeriodoPreco,
+    },
+    localizacao: {
+      zonaTexto: dto.zonaTexto,
+      concelho: dto.concelho,
+      distrito: dto.distrito,
+      freguesia: dto.freguesia,
+    },
+    caracteristicas: {
+      tipoImovel: dto.tipoImovel,
+      tipologia: dto.tipologia,
+      areaM2: dto.areaM2,
+      quartos: dto.quartos,
+      casasBanho: dto.casasBanho,
+      lista: dto.caracteristicas ?? [],
+    },
+    media: { fotoPrincipal: dto.fotoPrincipal },
+    extras: dto.extras ?? {},
+    estado: {
+      ativo: dto.ativo,
+      extraidoEm: dto.extraidoEm,
+      atualizadoEm: dto.atualizadoEm,
+      hashConteudo: dto.hashConteudo,
+    },
+  })
 }
