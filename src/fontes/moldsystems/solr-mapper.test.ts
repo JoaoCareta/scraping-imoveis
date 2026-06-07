@@ -37,6 +37,12 @@ describe("localizacaoDeDoc", () => {
       estado: "São Paulo",
     })
   })
+
+  // Fix 7 — fallback zonaTexto para namCity quando não há namDistrict
+  it("zonaTexto usa namCity como fallback quando não há namDistrict", () => {
+    const l = localizacaoDeDoc({ idtProperty: 1, namCity: "Bauru" })
+    expect(l.zonaTexto).toBe("Bauru")
+  })
 })
 
 describe("caracteristicasDeDoc", () => {
@@ -49,6 +55,41 @@ describe("caracteristicasDeDoc", () => {
     expect(c.casasBanho).toBe(2)
     expect(c.lista).toEqual([])
   })
+
+  // Fix 1 — tipoSingular strips accents before lookup
+  it("tipoSingular normaliza acentos — Galpões → galpao", () => {
+    const c = caracteristicasDeDoc({ ...imovel1910, namCategory: "Galpões" })
+    expect(c.tipoImovel).toBe("galpao")
+  })
+
+  // Fix 5 — areaDeDoc priority: idt 95 wins over idt 2
+  it("areaDeDoc usa idt 95 com prioridade sobre idt 2", () => {
+    const doc = {
+      ...imovel1910,
+      jsonCharacteristics: JSON.stringify([
+        { desInformation: "50.00", desInformationFormatted: "50,00 m²", characteristics: { idtCharacteristics: 2 } },
+        { desInformation: "96.00", desInformationFormatted: "96,00 m²", characteristics: { idtCharacteristics: 95 } },
+      ]),
+    }
+    expect(caracteristicasDeDoc(doc).areaM2).toBe(96)
+  })
+
+  // Fix 5 — decimal fallback via desInformation when no desInformationFormatted
+  it("areaDeDoc usa desInformation decimal quando não há desInformationFormatted", () => {
+    const doc = {
+      ...imovel1910,
+      jsonCharacteristics: JSON.stringify([
+        { desInformation: "1500.50", characteristics: { idtCharacteristics: 95 } },
+      ]),
+    }
+    expect(caracteristicasDeDoc(doc).areaM2).toBe(1500.5)
+  })
+
+  // Fix 6 — banheirosDeDoc treats 0 as undefined
+  it("banheirosDeDoc trata 0 banheiros como undefined", () => {
+    const c = caracteristicasDeDoc({ ...imovel1910, desResumeCharacteristics: "0 banheiros" })
+    expect(c.casasBanho).toBeUndefined()
+  })
 })
 
 describe("helpers de doc", () => {
@@ -56,6 +97,13 @@ describe("helpers de doc", () => {
     expect(urlSiteDeDoc(imovel1910, CTX, "ALUGUER")).toBe(
       "https://imobiliariainnove.com.br/imovel/locacao/apartamentos/aracatuba/condominio-edificio-residencial-park-mediterraneo/1910",
     )
+  })
+
+  // Fix 4 — urlSiteDeDoc sentinels for empty slug segments
+  it("urlSiteDeDoc usa sem-cidade quando namCity é undefined", () => {
+    const url = urlSiteDeDoc({ ...imovel1910, namCity: undefined }, CTX, "ALUGUER")
+    expect(url).toContain("/sem-cidade/")
+    expect(url).not.toMatch(/https:\/\/[^/]+\/\//)
   })
 
   it("fotoPrincipalDeDoc devolve a 1ª foto visível", () => {
@@ -68,11 +116,21 @@ describe("helpers de doc", () => {
     expect(ativoDeDoc({ idtProperty: 1, indBusy: 1 })).toBe(false)
   })
 
+  // Fix 7 — ativoDeDoc: indBusy=2 (non-zero number) → false
+  it("ativoDeDoc: indBusy=2 (número não-zero) → false", () => {
+    expect(ativoDeDoc({ idtProperty: 1, indBusy: 2 })).toBe(false)
+  })
+
   it("extrasDeDoc inclui vagas, condominio, iptu", () => {
     const e = extrasDeDoc(imovel1910)
     expect(e["vagas"]).toBe(2)
     expect(e["condominio"]).toBe(940)
     expect(e["iptu"]).toBe(105)
+  })
+
+  // Fix 3 — extrasDeDoc exposes indStatus
+  it("extrasDeDoc expõe indStatus", () => {
+    expect(extrasDeDoc(imovel1910)["indStatus"]).toBe(1)
   })
 })
 
@@ -106,5 +164,39 @@ describe("imoveisDeSolrDoc (integração com COD 1910 real)", () => {
     const dual = { ...imovel1910, valSales: 350000 }
     const r = imoveisDeSolrDoc(dual, CTX)
     expect(r.map((x) => (x.ok ? x.value.finalidade : "ERR"))).toEqual(["ALUGUER", "VENDA"])
+  })
+
+  // Fix 2 — hashConteudo is content-based, not timestamp-based
+  it("hashConteudo é idêntico para dois extraidoEm diferentes com o mesmo doc", () => {
+    const ctx1 = { ...CTX, extraidoEm: "2026-06-07T12:00:00.000Z" }
+    const ctx2 = { ...CTX, extraidoEm: "2026-06-08T09:00:00.000Z" }
+    const r1 = imoveisDeSolrDoc(imovel1910, ctx1)
+    const r2 = imoveisDeSolrDoc(imovel1910, ctx2)
+    expect(r1[0].ok && r2[0].ok).toBe(true)
+    if (r1[0].ok && r2[0].ok) {
+      expect(r1[0].value.estado.hashConteudo).toBe(r2[0].value.estado.hashConteudo)
+    }
+  })
+
+  it("hashConteudo muda quando valLocation muda", () => {
+    const r1 = imoveisDeSolrDoc(imovel1910, CTX)
+    const r2 = imoveisDeSolrDoc({ ...imovel1910, valLocation: 999 }, CTX)
+    expect(r1[0].ok && r2[0].ok).toBe(true)
+    if (r1[0].ok && r2[0].ok) {
+      expect(r1[0].value.estado.hashConteudo).not.toBe(r2[0].value.estado.hashConteudo)
+    }
+  })
+
+  // Fix 7 — imoveisDeSolrDoc with missing zonaTexto → rejected (ok: false)
+  it("imoveisDeSolrDoc com zonaTexto vazio produz resultado ok:false", () => {
+    const r = imoveisDeSolrDoc({ idtProperty: 5, valLocation: 1000 }, CTX)
+    expect(r).toHaveLength(1)
+    expect(r[0].ok).toBe(false)
+  })
+
+  // Fix 7 — imoveisDeSolrDoc with valLocation=0 → no operations → empty array
+  it("imoveisDeSolrDoc com valLocation=0 produz array vazio", () => {
+    const r = imoveisDeSolrDoc({ idtProperty: 5, valLocation: 0 }, CTX)
+    expect(r).toEqual([])
   })
 })
