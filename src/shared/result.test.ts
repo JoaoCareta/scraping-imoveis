@@ -9,6 +9,14 @@ describe("Result", () => {
     if (r.ok) expect(r.value).toBe(42)
   })
 
+  it("isOk narrows o tipo para aceder a value", () => {
+    const r = ok(7)
+    if (isOk(r)) {
+      // só compila se isOk for um type predicate
+      expect(r.value).toBe(7)
+    }
+  })
+
   it("err carrega o erro e é reconhecido por isErr", () => {
     const r = err("falhou")
     expect(isErr(r)).toBe(true)
