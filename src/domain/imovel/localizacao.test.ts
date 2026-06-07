@@ -3,12 +3,12 @@ import { Localizacao } from "./localizacao"
 
 describe("Localizacao", () => {
   it("cria com zonaTexto e opcionais, fazendo trim", () => {
-    const l = Localizacao.criar({ zonaTexto: "  Lisboa  ", concelho: " Lisboa " })
+    const l = Localizacao.criar({ zonaTexto: "  Centro  ", cidade: " Araçatuba " })
     expect(l.ok).toBe(true)
     if (l.ok) {
-      expect(l.value.zonaTexto).toBe("Lisboa")
-      expect(l.value.concelho).toBe("Lisboa")
-      expect(l.value.distrito).toBeUndefined()
+      expect(l.value.zonaTexto).toBe("Centro")
+      expect(l.value.cidade).toBe("Araçatuba")
+      expect(l.value.bairro).toBeUndefined()
     }
   })
 
@@ -19,8 +19,14 @@ describe("Localizacao", () => {
   })
 
   it("normaliza opcional só-espaços para undefined", () => {
-    const l = Localizacao.criar({ zonaTexto: "Faro", concelho: "   " })
+    const l = Localizacao.criar({ zonaTexto: "Centro", bairro: "   " })
     expect(l.ok).toBe(true)
-    if (l.ok) expect(l.value.concelho).toBeUndefined()
+    if (l.ok) expect(l.value.bairro).toBeUndefined()
+  })
+
+  it("normaliza estado (UF) para maiúsculas", () => {
+    const l = Localizacao.criar({ zonaTexto: "Centro", estado: "sp" })
+    expect(l.ok).toBe(true)
+    if (l.ok) expect(l.value.estado).toBe("SP")
   })
 })

@@ -8,7 +8,7 @@ const props = (): PropsImovel => ({
   urlSite: "https://imob.pt/imovel/9",
   finalidade: "VENDA",
   preco: { valor: 250000, moeda: "BRL", periodo: "TOTAL" },
-  localizacao: { zonaTexto: "Braga", concelho: "Braga" },
+  localizacao: { zonaTexto: "Centro", bairro: "Centro", cidade: "Araçatuba", estado: "SP" },
   caracteristicas: { tipoImovel: "Apartamento", tipologia: "T3", areaM2: 120, quartos: 3, casasBanho: 2, lista: ["elevador"] },
   media: { fotoPrincipal: "https://imob.pt/f9.jpg" },
   extras: { certificado: "B" },
@@ -26,7 +26,9 @@ describe("imovelParaDto", () => {
     expect(dto.preco).toBe(250000)
     expect(dto.moeda).toBe("BRL")
     expect(dto.periodoPreco).toBe("TOTAL")
-    expect(dto.zonaTexto).toBe("Braga")
+    expect(dto.zonaTexto).toBe("Centro")
+    expect(dto.cidade).toBe("Araçatuba")
+    expect(dto.estado).toBe("SP")
     expect(dto.tipologia).toBe("T3")
     expect(dto.caracteristicas).toEqual(["elevador"])
     expect(dto.extras["certificado"]).toBe("B")

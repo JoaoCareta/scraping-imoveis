@@ -3,17 +3,17 @@ import { ErroValidacao, erroValidacao } from "./erro-validacao"
 
 export interface PropsLocalizacao {
   zonaTexto: string
-  concelho?: string
-  distrito?: string
-  freguesia?: string
+  bairro?: string
+  cidade?: string
+  estado?: string // UF, ex.: "SP"
 }
 
 export class Localizacao {
   private constructor(
     readonly zonaTexto: string,
-    readonly concelho: string | undefined,
-    readonly distrito: string | undefined,
-    readonly freguesia: string | undefined,
+    readonly bairro: string | undefined,
+    readonly cidade: string | undefined,
+    readonly estado: string | undefined,
   ) {}
 
   static criar(props: PropsLocalizacao): Result<Localizacao, ErroValidacao> {
@@ -25,8 +25,7 @@ export class Localizacao {
       const limpo = (v ?? "").trim()
       return limpo.length === 0 ? undefined : limpo
     }
-    return ok(
-      new Localizacao(zona, opcional(props.concelho), opcional(props.distrito), opcional(props.freguesia)),
-    )
+    const uf = opcional(props.estado)
+    return ok(new Localizacao(zona, opcional(props.bairro), opcional(props.cidade), uf ? uf.toUpperCase() : undefined))
   }
 }

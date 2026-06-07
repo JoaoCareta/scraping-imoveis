@@ -8,9 +8,9 @@ export interface ImovelDto {
   preco: number
   moeda: string
   periodoPreco?: string
-  distrito?: string
-  concelho?: string
-  freguesia?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
   zonaTexto: string
   areaM2?: number
   quartos?: number
