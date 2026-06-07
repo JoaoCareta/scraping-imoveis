@@ -102,13 +102,13 @@ src/
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
-    "rootDir": "src",
-    "outDir": "dist"
+    "types": ["node"]
   },
   "include": ["src", "vitest.config.ts"]
 }
 ```
+
+> **Nota:** não usar `rootDir`/`outDir` aqui — com `tsc --noEmit` (typecheck) e `include` a abranger `vitest.config.ts`, `rootDir: "src"` provoca `TS6059`. Quando a fase de build precisar de emitir JS, adicionar um `tsconfig.build.json` separado com `"rootDir": "src"` e `"include": ["src"]`.
 
 - [ ] **Step 3: Criar `vitest.config.ts`**
 
