@@ -256,7 +256,7 @@ descobrir listagens ─► paginar ─► buscar detalhe ─► extrairCampos (a
 ## 9. Estratégia de testes (TDD)
 
 - **Value objects / invariantes** (`Ref`, `Preco`, `Localizacao`) — testes puros.
-- **Normalizadores** — tabela de casos (`"1.250 €/mês"` → `Preco(1250, EUR, MENSAL)`, `"T3"`, `"120 m²"`…).
+- **Normalizadores** — tabela de casos no formato BR (`"R$ 1.250/mês"` → `Preco(1250, BRL, MENSAL)`, `"R$ 250.000"` → `Preco(250000, BRL, TOTAL)`, `"3 quartos"`, `"120 m²"`…).
 - **Adaptador por cliente** — contra **fixtures de HTML real guardado** (snapshot do site), sem rede.
 - **Diff/estado** — novos/alterados/removidos/no-op + circuit breaker.
 - **Mapper** `Imovel ↔ ImovelDto` — ida e volta.
@@ -278,3 +278,14 @@ descobrir listagens ─► paginar ─► buscar detalhe ─► extrairCampos (a
 - **Núcleo de atendimento** (triagem LLM, matching, mensagens, leads) — spec própria.
 - **Adaptadores de canal** WhatsApp → Instagram → Messenger — specs próprias, como deltas finos sobre o Núcleo.
 - Possível **UI de configuração** visual para o onboarding por descoberta.
+
+---
+
+## 12. Locale e plataforma (atualização 2026-06-07)
+
+Após o spike de descoberta contra um site real (ver `docs/spikes/2026-06-07-innove-moldsystems.md`):
+
+- **Locale = Brasil (por enquanto).** Moeda do domínio passou para **`BRL`** (implementado na Fase 1). Vocabulário e formatos de normalização seguem BR (R$, m², quartos, vagas, IPTU, condomínio).
+- **Localização BR adiada para a Fase 4.** `Localizacao` ainda usa `distrito/concelho/freguesia` (PT). A migração para **bairro/cidade/estado(UF)** faz-se quando o adaptador existir e soubermos a forma real dos campos da plataforma — evita churn especulativo. `zonaTexto` (obrigatório) continua a servir entretanto.
+- **Adaptador por plataforma, não só por cliente.** Sites como o testado correm na plataforma multi-inquilino **MoldSystems / msysimob**. Reenquadrar §4.2: um **adaptador por plataforma** (ex.: MoldSystems) + **config por inquilino** (`imob` id) serve N imobiliárias. O "adaptador por cliente" passa a ser o caso de sites próprios/únicos.
+- **Estratégia de extração (Fase 4):** preferir a **API da plataforma** (descoberta via observação de rede com Playwright no onboarding; JSON limpo + paginação); fallback **DOM com Cheerio** ancorado em hrefs estáveis. **Proibido** depender de classes CSS com hash (styled-components).
