@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
-import { finalidadesDeDoc, localizacaoDeDoc, caracteristicasDeDoc } from "./solr-mapper"
+import { finalidadesDeDoc, localizacaoDeDoc, caracteristicasDeDoc, urlSiteDeDoc, fotoPrincipalDeDoc, ativoDeDoc, extrasDeDoc } from "./solr-mapper"
 import { imovel1910 } from "./fixtures/imovel-1910"
+
+const CTX = { clienteId: "innove", origin: "https://imobiliariainnove.com.br", extraidoEm: "2026-06-07T12:00:00.000Z" }
 
 describe("finalidadesDeDoc", () => {
   it("ALUGUER quando há valLocation>0", () => {
@@ -46,5 +48,30 @@ describe("caracteristicasDeDoc", () => {
     expect(c.quartos).toBe(2)
     expect(c.casasBanho).toBe(2)
     expect(c.lista).toEqual([])
+  })
+})
+
+describe("helpers de doc", () => {
+  it("urlSiteDeDoc constrói o URL com slugs sem acento", () => {
+    expect(urlSiteDeDoc(imovel1910, CTX, "ALUGUER")).toBe(
+      "https://imobiliariainnove.com.br/imovel/locacao/apartamentos/aracatuba/condominio-edificio-residencial-park-mediterraneo/1910",
+    )
+  })
+
+  it("fotoPrincipalDeDoc devolve a 1ª foto visível", () => {
+    expect(fotoPrincipalDeDoc(imovel1910)).toContain("/imovel/fotos/1910/")
+  })
+
+  it("ativoDeDoc: mostra no site e não ocupado", () => {
+    expect(ativoDeDoc(imovel1910)).toBe(true)
+    expect(ativoDeDoc({ idtProperty: 1, flgShowSite: false })).toBe(false)
+    expect(ativoDeDoc({ idtProperty: 1, indBusy: 1 })).toBe(false)
+  })
+
+  it("extrasDeDoc inclui vagas, condominio, iptu", () => {
+    const e = extrasDeDoc(imovel1910)
+    expect(e["vagas"]).toBe(2)
+    expect(e["condominio"]).toBe(940)
+    expect(e["iptu"]).toBe(105)
   })
 })

@@ -4,7 +4,7 @@ import { PropsLocalizacao } from "../../domain/imovel/localizacao"
 import { Caracteristicas } from "../../domain/imovel/tipos"
 import { parsearNumeroBr } from "../../normalizadores/numero-br"
 import { parsearInteiro } from "../../normalizadores/inteiro"
-import { MoldSystemsSolrDoc, MoldSystemsChar } from "./solr-doc"
+import { MoldSystemsSolrDoc, MoldSystemsChar, MoldSystemsContexto, MoldSystemsFoto } from "./solr-doc"
 
 export interface OperacaoPreco {
   finalidade: Finalidade
@@ -75,4 +75,49 @@ export function finalidadesDeDoc(doc: MoldSystemsSolrDoc): OperacaoPreco[] {
     out.push({ finalidade: "VENDA", valor: doc.valSales, periodo: "TOTAL" })
   }
   return out
+}
+
+const SLUG_FINALIDADE: Record<Finalidade, string> = { ALUGUER: "locacao", VENDA: "venda" }
+
+function slug(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+}
+
+export function urlSiteDeDoc(doc: MoldSystemsSolrDoc, ctx: MoldSystemsContexto, finalidade: Finalidade): string {
+  const fin = SLUG_FINALIDADE[finalidade]
+  const cat = slug(doc.namCategory ?? "imovel")
+  const cidade = slug(doc.namCity ?? "")
+  const loc = doc.desUriLandingPage ?? "imovel"
+  return `${ctx.origin}/imovel/${fin}/${cat}/${cidade}/${loc}/${doc.idtProperty}`
+}
+
+export function fotoPrincipalDeDoc(doc: MoldSystemsSolrDoc): string | undefined {
+  try {
+    const fotos = JSON.parse(doc.jsonPhotos ?? "[]") as MoldSystemsFoto[]
+    const visivel = fotos.find((f) => f.urlPhoto && !f.flgNotShowSite)
+    return visivel?.urlPhoto
+  } catch {
+    return undefined
+  }
+}
+
+export function ativoDeDoc(doc: MoldSystemsSolrDoc): boolean {
+  const mostra = doc.flgShowSite !== false
+  const ocupado = doc.indBusy === true || doc.indBusy === 1
+  return mostra && !ocupado
+}
+
+export function extrasDeDoc(doc: MoldSystemsSolrDoc): Record<string, unknown> {
+  const e: Record<string, unknown> = {}
+  if (doc.totalGarages != null) e["vagas"] = doc.totalGarages
+  if (doc.valCondominium != null) e["condominio"] = doc.valCondominium
+  if (doc.valMonthIptu != null) e["iptu"] = doc.valMonthIptu
+  if (doc.idtTenant != null) e["idtTenant"] = doc.idtTenant
+  if (doc.namState != null) e["estadoNome"] = doc.namState
+  return e
 }
