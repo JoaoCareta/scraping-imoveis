@@ -21,3 +21,16 @@ export function finalidadeDeUrl(url: string): Finalidade | null {
   if (s.includes("locacao")) return "ALUGUER"
   return null
 }
+
+export function tipoImovelDeUrl(url: string): string | null {
+  const seg = segmentosImovel(url)[1]
+  if (!seg) return null
+  const s = seg.toLowerCase()
+  const mapa: Record<string, string> = {
+    apartamentos: "apartamento",
+    casas: "casa",
+    comercial: "comercial",
+    terrenos: "terreno",
+  }
+  return mapa[s] ?? s.replace(/s$/, "")
+}
