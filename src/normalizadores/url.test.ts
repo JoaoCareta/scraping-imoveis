@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { finalidadeDeUrl, tipoImovelDeUrl, cidadeDeUrl, refDeUrl } from "./url"
+import { finalidadeDeUrl, tipoImovelDeUrl, cidadeDeUrl, refDeUrl, segmentosImovel } from "./url"
 
 const ALUG = "https://imobiliariainnove.com.br/imovel/locacao/apartamentos/aracatuba/conjunto-habitacional-pedro-perri/2937"
 const VENDA = "https://imobiliariainnove.com.br/imovel/venda/casas/aracatuba/centro/1000"
@@ -51,5 +51,19 @@ describe("refDeUrl", () => {
   it("devolve null para URL sem segmentos", () => {
     expect(refDeUrl("https://x.com/")).toBeNull()
     expect(refDeUrl("")).toBeNull()
+  })
+})
+
+describe("robustez de URL", () => {
+  it("ignora maiúsculas em /imovel/, barra final e query string", () => {
+    expect(finalidadeDeUrl("https://x/IMOVEL/locacao/casas/aracatuba/centro/9")).toBe("ALUGUER")
+    expect(refDeUrl("https://x/imovel/locacao/casas/aracatuba/centro/9/")).toBe("9")
+    expect(refDeUrl("https://x/imovel/locacao/casas/aracatuba/centro/9?utm=abc")).toBe("9")
+  })
+  it("galpoes mapeia para galpao (mapa explícito, sem strip-s)", () => {
+    expect(tipoImovelDeUrl("https://x/imovel/venda/galpoes/aracatuba/centro/9")).toBe("galpao")
+  })
+  it("segmentosImovel devolve os segmentos após /imovel/", () => {
+    expect(segmentosImovel("https://x/imovel/locacao/casas/aracatuba/centro/9")).toEqual(["locacao","casas","aracatuba","centro","9"])
   })
 })

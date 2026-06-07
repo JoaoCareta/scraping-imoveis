@@ -5,7 +5,7 @@ export function segmentosImovel(url: string): string[] {
   if (!url) return []
   try {
     const path = url.startsWith("http") ? new URL(url).pathname : url
-    const i = path.indexOf("/imovel/")
+    const i = path.toLowerCase().indexOf("/imovel/")
     const base = i >= 0 ? path.slice(i + "/imovel/".length) : path.replace(/^\//, "")
     return base.split("/").filter(Boolean)
   } catch {
@@ -31,8 +31,12 @@ export function tipoImovelDeUrl(url: string): string | null {
     casas: "casa",
     comercial: "comercial",
     terrenos: "terreno",
+    lotes: "lote",
+    galpoes: "galpao",
+    escritorios: "escritorio",
+    salas: "sala",
   }
-  return mapa[s] ?? s.replace(/s$/, "")
+  return mapa[s] ?? s
 }
 
 export function cidadeDeUrl(url: string): string | null {
