@@ -50,3 +50,31 @@ describe("Imovel.criar", () => {
     if (!r.ok) expect(r.error.map((e) => e.campo)).toContain("preco.periodo")
   })
 })
+
+describe("Imovel comportamento de estado", () => {
+  const base = () => {
+    const r = Imovel.criar(propsValidas())
+    if (!r.ok) throw new Error("setup inválido")
+    return r.value
+  }
+
+  it("mudouEmRelacaoA é true quando o hash difere", () => {
+    const a = base()
+    const b = a.comEstado({ ...a.estado, hashConteudo: "h2" })
+    expect(a.mudouEmRelacaoA(b)).toBe(true)
+  })
+
+  it("mudouEmRelacaoA é false quando o hash é igual", () => {
+    const a = base()
+    const b = a.comEstado({ ...a.estado, atualizadoEm: "2026-06-08T00:00:00.000Z" })
+    expect(a.mudouEmRelacaoA(b)).toBe(false)
+  })
+
+  it("comEstado devolve nova instância sem mutar a original", () => {
+    const a = base()
+    const b = a.comEstado({ ...a.estado, ativo: false })
+    expect(b.estado.ativo).toBe(false)
+    expect(a.estado.ativo).toBe(true)
+    expect(b.ref.valor).toBe(a.ref.valor)
+  })
+})

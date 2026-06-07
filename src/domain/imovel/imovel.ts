@@ -85,4 +85,23 @@ export class Imovel {
       ),
     )
   }
+
+  mudouEmRelacaoA(outro: Imovel): boolean {
+    return this.estado.hashConteudo !== outro.estado.hashConteudo
+  }
+
+  comEstado(estado: EstadoExtracao): Imovel {
+    return new Imovel(
+      this.ref,
+      this.clienteId,
+      this.urlSite,
+      this.finalidade,
+      this.preco,
+      this.localizacao,
+      this.caracteristicas,
+      this.media,
+      this.extras,
+      estado,
+    )
+  }
 }
