@@ -34,3 +34,13 @@ export function tipoImovelDeUrl(url: string): string | null {
   }
   return mapa[s] ?? s.replace(/s$/, "")
 }
+
+export function cidadeDeUrl(url: string): string | null {
+  const seg = segmentosImovel(url)[2]
+  if (!seg) return null
+  return seg
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ")
+}

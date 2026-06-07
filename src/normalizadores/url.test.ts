@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { finalidadeDeUrl, tipoImovelDeUrl } from "./url"
+import { finalidadeDeUrl, tipoImovelDeUrl, cidadeDeUrl } from "./url"
 
 const ALUG = "https://imobiliariainnove.com.br/imovel/locacao/apartamentos/aracatuba/conjunto-habitacional-pedro-perri/2937"
 const VENDA = "https://imobiliariainnove.com.br/imovel/venda/casas/aracatuba/centro/1000"
@@ -27,5 +27,16 @@ describe("tipoImovelDeUrl", () => {
 
   it("devolve null sem segmento de tipo", () => {
     expect(tipoImovelDeUrl("https://x.com/")).toBeNull()
+  })
+})
+
+describe("cidadeDeUrl", () => {
+  it("de-slugifica o segmento de cidade em Title Case", () => {
+    expect(cidadeDeUrl(ALUG)).toBe("Aracatuba")
+    expect(cidadeDeUrl("https://x/imovel/venda/casas/sao-jose-do-rio-preto/centro/9")).toBe("Sao Jose Do Rio Preto")
+  })
+
+  it("devolve null sem segmento de cidade", () => {
+    expect(cidadeDeUrl("https://x.com/")).toBeNull()
   })
 })
