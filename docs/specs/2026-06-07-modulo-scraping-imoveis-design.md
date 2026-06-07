@@ -159,8 +159,8 @@ class Ref {           // não-vazia (chave de junção com o Marketplace, no Nú
 class Preco {         // valor > 0; periodo coerente com finalidade
   constructor(valor: number, moeda: Moeda, periodo: "MENSAL" | "TOTAL")
 }
-class Localizacao {   // zonaTexto obrigatória; distrito/concelho/freguesia opcionais
-  constructor(zonaTexto: string, concelho?: string, distrito?: string, freguesia?: string)
+class Localizacao {   // zonaTexto obrigatória; bairro/cidade/estado(UF) opcionais
+  constructor(zonaTexto: string, bairro?: string, cidade?: string, estado?: string)
 }
 type Finalidade = "ALUGUER" | "VENDA"
 ```
@@ -201,7 +201,7 @@ ImovelDto {
   ref, clienteId, urlSite,
   finalidade, tipoImovel?, tipologia?,
   preco, moeda, periodoPreco?,
-  distrito?, concelho?, freguesia?, zonaTexto,
+  bairro?, cidade?, estado?, zonaTexto,
   areaM2?, quartos?, casasBanho?, caracteristicas?[],
   fotoPrincipal?,
   extras: { ... },                     // campos específicos do cliente
@@ -286,6 +286,6 @@ descobrir listagens ─► paginar ─► buscar detalhe ─► extrairCampos (a
 Após o spike de descoberta contra um site real (ver `docs/spikes/2026-06-07-innove-moldsystems.md`):
 
 - **Locale = Brasil (por enquanto).** Moeda do domínio passou para **`BRL`** (implementado na Fase 1). Vocabulário e formatos de normalização seguem BR (R$, m², quartos, vagas, IPTU, condomínio).
-- **Localização BR adiada para a Fase 4.** `Localizacao` ainda usa `distrito/concelho/freguesia` (PT). A migração para **bairro/cidade/estado(UF)** faz-se quando o adaptador existir e soubermos a forma real dos campos da plataforma — evita churn especulativo. `zonaTexto` (obrigatório) continua a servir entretanto.
+- **Localização BR — feita (2026-06-07).** `Localizacao` usa **bairro/cidade/estado(UF)** (`estado` normalizado para maiúsculas); `zonaTexto` continua obrigatório. Migrado do esquema PT no commit `f5e6270`.
 - **Adaptador por plataforma, não só por cliente.** Sites como o testado correm na plataforma multi-inquilino **MoldSystems / msysimob**. Reenquadrar §4.2: um **adaptador por plataforma** (ex.: MoldSystems) + **config por inquilino** (`imob` id) serve N imobiliárias. O "adaptador por cliente" passa a ser o caso de sites próprios/únicos.
 - **Estratégia de extração (Fase 4):** preferir a **API da plataforma** (descoberta via observação de rede com Playwright no onboarding; JSON limpo + paginação); fallback **DOM com Cheerio** ancorado em hrefs estáveis. **Proibido** depender de classes CSS com hash (styled-components).
