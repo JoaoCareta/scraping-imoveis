@@ -1,0 +1,126 @@
+import Fastify, { FastifyInstance, FastifyRequest } from "fastify"
+import { Config } from "../config"
+import { ImovelRepository, FiltrosImovel } from "../aplicacao/imovel-repository"
+import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
+
+interface QueryImoveis {
+  finalidade?: "ALUGUER" | "VENDA"
+  precoMin?: number
+  precoMax?: number
+  quartos?: number
+  cidade?: string
+  bairro?: string
+  tipoImovel?: string
+  ativo?: boolean
+  limit?: number
+  offset?: number
+}
+
+const SCHEMA_IMOVEIS = {
+  querystring: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      finalidade: { type: "string", enum: ["ALUGUER", "VENDA"] },
+      precoMin: { type: "number", minimum: 0 },
+      precoMax: { type: "number", minimum: 0 },
+      quartos: { type: "integer", minimum: 0 },
+      cidade: { type: "string" },
+      bairro: { type: "string" },
+      tipoImovel: { type: "string" },
+      ativo: { type: "boolean" },
+      limit: { type: "integer", minimum: 1, maximum: 500, default: 100 },
+      offset: { type: "integer", minimum: 0, default: 0 },
+    },
+  },
+}
+
+export function criarServidor(repo: ImovelRepository, config: Config): FastifyInstance {
+  const app = Fastify({ logger: { level: config.logLevel } })
+
+  if (config.apiKey) {
+    const chaveEsperada = config.apiKey
+    app.addHook("onRequest", async (req, reply) => {
+      if (req.url.startsWith("/health")) return
+      if (req.headers["x-api-key"] !== chaveEsperada) {
+        return reply.code(401).send({
+          evento: "NaoAutorizado",
+          erro: { codigo: "API_KEY", mensagem: "x-api-key inválida ou ausente" },
+        })
+      }
+    })
+  }
+
+  app.setErrorHandler((erroDesconhecido, _req, reply) => {
+    const erro = erroDesconhecido as Error & { statusCode?: number }
+    if (erro instanceof FonteTimeoutError) {
+      return reply.code(504).send({
+        evento: "FonteTimeout",
+        erro: { codigo: "FONTE_TIMEOUT", mensagem: erro.message },
+      })
+    }
+    if (erro instanceof FonteIndisponivelError) {
+      return reply.code(503).send({
+        evento: "FonteIndisponivel",
+        erro: { codigo: "FONTE_INDISPONIVEL", mensagem: erro.message },
+      })
+    }
+    const status = erro.statusCode ?? 500
+    return reply.code(status).send({
+      evento: "Erro",
+      erro: { codigo: String(status), mensagem: erro.message },
+    })
+  })
+
+  app.get("/health", async () => ({
+    status: "ok",
+    uptimeMs: Math.round(process.uptime() * 1000),
+  }))
+
+  app.get<{ Querystring: QueryImoveis }>(
+    "/imoveis",
+    { schema: SCHEMA_IMOVEIS },
+    async (req: FastifyRequest<{ Querystring: QueryImoveis }>) => {
+      const q = req.query
+      const limit = q.limit ?? 100
+      const offset = q.offset ?? 0
+      const filtros: FiltrosImovel = {
+        finalidade: q.finalidade,
+        precoMin: q.precoMin,
+        precoMax: q.precoMax,
+        quartos: q.quartos,
+        cidade: q.cidade,
+        bairro: q.bairro,
+        tipoImovel: q.tipoImovel,
+        ativo: q.ativo,
+      }
+      const coleta = await repo.buscar(filtros)
+      return {
+        evento: "ColetaConcluida",
+        extraidoEm: coleta.extraidoEm,
+        total: coleta.total,
+        rejeitados: coleta.rejeitados,
+        imoveis: coleta.imoveis.slice(offset, offset + limit),
+      }
+    },
+  )
+
+  app.get<{ Params: { ref: string } }>("/imoveis/:ref", async (req, reply) => {
+    const coleta = await repo.buscarPorRef(req.params.ref)
+    if (coleta.total === 0) {
+      return reply.code(404).send({
+        evento: "ImovelNaoEncontrado",
+        erro: { codigo: "NAO_ENCONTRADO", mensagem: `ref ${req.params.ref} não encontrada` },
+      })
+    }
+    return {
+      evento: "ColetaConcluida",
+      extraidoEm: coleta.extraidoEm,
+      total: coleta.total,
+      rejeitados: coleta.rejeitados,
+      imoveis: coleta.imoveis,
+    }
+  })
+
+  return app
+}
