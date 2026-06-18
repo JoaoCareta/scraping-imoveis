@@ -61,19 +61,35 @@ docs/   specs/ plans/ spikes/  (design, planos TDD, descobertas)
 spikes/ scripts exploratórios (.mjs)
 ```
 
-## Integrar com o n8n
+## Serviço HTTP / API
 
-O n8n é Node, mas **não importa o código TypeScript diretamente**. Caminhos possíveis:
+O scraper corre como **serviço HTTP stateless** (sem cache, sem BD): cada pedido
+coleta da API do MoldSystems, mapeia e devolve um Read Model rico (`RecursoImovel`).
 
-1. **Já hoje (teste rápido no n8n):** nó **HTTP Request** a chamar a API MoldSystems
-   diretamente —
-   `GET https://imobiliariainnove.com.br/api/solr/search/{json}` (ver `docs/spikes/`) —
-   e um nó **Code** para filtrar/mapear. É o que os spikes fazem, mas dentro do n8n.
-2. **Caminho limpo (planeado):** o serviço expõe uma **API REST** própria
-   (`GET /imoveis?filtros` → `ImovelDto`); o n8n chama via **HTTP Request**. Requer a
-   **Fase 4b** (cliente) + **Fase 6** (API REST). É a forma recomendada.
-3. **Avançado:** compilar TS→JS (`tsconfig.build.json` + `tsc`), publicar como pacote npm
-   e construir um **nó n8n personalizado**.
+### Correr localmente
 
-**Recomendado:** opção 2. Por agora, a opção 1 serve para validar o fluxo no n8n.
+```bash
+npm run dev                  # tsx watch (desenvolvimento)
+npm run build && npm start   # produção (dist/main.js)
 ```
+
+### Endpoints
+- `GET /health` → `{ "status": "ok" }`
+- `GET /imoveis?finalidade=ALUGUER&precoMax=2000&quartos=3&cidade=Bauru` → envelope `ColetaConcluida`
+- `GET /imoveis/:ref`
+
+A resposta de `/imoveis` é um envelope com sabor a evento de domínio:
+
+```jsonc
+{ "evento": "ColetaConcluida", "extraidoEm": "...", "total": 42, "rejeitados": 3, "imoveis": [ /* RecursoImovel */ ] }
+```
+
+### Deploy (docker compose, ao lado do n8n)
+
+1. `cp .env.example .env` e ajustar.
+2. Em `docker-compose.yml`, pôr o nome da rede docker do n8n em `NOME_DA_REDE_DO_N8N`.
+3. `docker compose up -d --build`.
+4. No n8n, nó **HTTP Request** → `http://scraper-api:3000/imoveis?...` (rede interna).
+
+A API não é exposta à internet pública (rede interna/VPN). Para proteger mesmo
+dentro da rede, preencher `API_KEY` no `.env` e enviar o header `x-api-key`.
