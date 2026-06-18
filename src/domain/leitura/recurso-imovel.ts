@@ -5,7 +5,7 @@ export interface RecursoImovel {
   ref: string
   clienteId: string
   urlSite: string
-  finalidade: string
+  finalidade: "ALUGUER" | "VENDA"
   preco: { valor: number; moeda: string; periodo: string }
   localizacao: { zonaTexto: string; bairro?: string; cidade?: string; estado?: string }
   caracteristicas: {

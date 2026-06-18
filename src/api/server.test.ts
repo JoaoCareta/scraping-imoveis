@@ -87,4 +87,19 @@ describe("servidor", () => {
     const res = await app.inject({ method: "GET", url: "/health" })
     expect(res.statusCode).toBe(200)
   })
+
+  it("pagina com limit/offset e devolve total + página", async () => {
+    const coleta3: Coleta = {
+      imoveis: [recurso("1", "ALUGUER"), recurso("2", "ALUGUER"), recurso("3", "VENDA")],
+      total: 3, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z",
+    }
+    const app = criarServidor(repoFake({ buscar: async () => coleta3 }), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?limit=2&offset=1" })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.total).toBe(3)
+    expect(body.limit).toBe(2)
+    expect(body.offset).toBe(1)
+    expect(body.imoveis.map((i: { ref: string }) => i.ref)).toEqual(["2", "3"])
+  })
 })

@@ -95,11 +95,14 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
         ativo: q.ativo,
       }
       const coleta = await repo.buscar(filtros)
+      // total = nº de imóveis que casam os filtros (antes da paginação); imoveis = a página.
       return {
         evento: "ColetaConcluida",
         extraidoEm: coleta.extraidoEm,
         total: coleta.total,
         rejeitados: coleta.rejeitados,
+        limit,
+        offset,
         imoveis: coleta.imoveis.slice(offset, offset + limit),
       }
     },

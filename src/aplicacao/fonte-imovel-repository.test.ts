@@ -72,4 +72,27 @@ describe("FonteImovelRepository", () => {
     expect(c.total).toBe(2)
     expect(c.imoveis.map((i) => i.finalidade).sort()).toEqual(["ALUGUER", "VENDA"])
   })
+
+  it("filtra por precoMin", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docAluguel, docVendaEAluguel])) })
+    const c = await repo.buscar({ finalidade: "ALUGUER", precoMin: 1200 })
+    expect(c.total).toBe(1)
+    expect(c.imoveis[0].ref).toBe("2001")
+  })
+
+  it("filtra por bairro (case-insensitive)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docAluguel, docVendaEAluguel])) })
+    const c = await repo.buscar({ bairro: "vila estádio" })
+    expect(c.total).toBe(1)
+    expect(c.imoveis[0].ref).toBe("1910")
+  })
+
+  it("ativo:false devolve apenas inativos", async () => {
+    const ativos = imoveisDeDocs([docAluguel])
+    const inativos = imoveisDeDocs([{ ...imovel1910, idtProperty: 3003, flgShowSite: false }])
+    const repo = new FonteImovelRepository({ fonte: fonteFake([...ativos, ...inativos]) })
+    const c = await repo.buscar({ ativo: false })
+    expect(c.total).toBe(1)
+    expect(c.imoveis.every((i) => i.estado.ativo === false)).toBe(true)
+  })
 })
