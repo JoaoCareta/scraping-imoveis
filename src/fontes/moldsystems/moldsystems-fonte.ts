@@ -53,9 +53,10 @@ export class MoldSystemsFonte implements FonteDeImoveis {
     const url = `${this.origin}/api/solr/search/${encodeURI(JSON.stringify({ numRows: this.numRows }))}`
     const data = await this.obter(url)
     const docs = data.response?.docs ?? []
-    const numFound = data.response?.numFound ?? docs.length
-    if (numFound > this.numRows) {
-      this.avisar(`catálogo truncado: numFound=${numFound} > numRows=${this.numRows}`)
+    const numFound = data.response?.numFound
+    const truncado = numFound == null ? docs.length >= this.numRows : numFound > this.numRows
+    if (truncado) {
+      this.avisar(`possível catálogo truncado: numFound=${numFound ?? "ausente"}, docs=${docs.length}, numRows=${this.numRows}`)
     }
     const ctx = { clienteId: this.clienteId, origin: this.origin, extraidoEm: this.agora().toISOString() }
     const imoveis: Imovel[] = []
@@ -74,9 +75,14 @@ export class MoldSystemsFonte implements FonteDeImoveis {
     for (let tentativa = 0; tentativa <= this.retries; tentativa++) {
       try {
         const res = await this.fetchFn(url, { headers: HEADERS, signal: AbortSignal.timeout(this.timeoutMs) })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return (await res.json()) as RespostaSolr
+        if (res.ok) return (await res.json()) as RespostaSolr
+        // 4xx = erro permanente (não faz retry); 5xx = transitório (entra no retry).
+        if (res.status < 500) {
+          throw new FonteIndisponivelError(`fonte respondeu HTTP ${res.status} em ${this.origin}`)
+        }
+        throw new Error(`HTTP ${res.status}`)
       } catch (e) {
+        if (e instanceof FonteIndisponivelError) throw e
         // AbortSignal.timeout rejeita com DOMException name="TimeoutError"; abort manual usa "AbortError".
         if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
           throw new FonteTimeoutError(`timeout ao coletar de ${this.origin} (${this.timeoutMs}ms)`)

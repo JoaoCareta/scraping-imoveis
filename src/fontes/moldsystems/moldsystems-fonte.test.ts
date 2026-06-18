@@ -83,4 +83,27 @@ describe("MoldSystemsFonte", () => {
     await expect(fonte.buscarTodos()).rejects.toBeInstanceOf(FonteTimeoutError)
     expect((fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1)
   })
+
+  it("4xx não faz retry → FonteIndisponivelError", async () => {
+    const fetchFn = vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) })) as unknown as typeof fetch
+    const fonte = new MoldSystemsFonte({ ...DEPS_BASE, retries: 2, fetchFn })
+
+    await expect(fonte.buscarTodos()).rejects.toBeInstanceOf(FonteIndisponivelError)
+    expect((fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1)
+  })
+
+  it("5xx faz retry e depois sucede", async () => {
+    let chamada = 0
+    const fetchFn = vi.fn(async () => {
+      chamada++
+      if (chamada === 1) return { ok: false, status: 503, json: async () => ({}) }
+      return { ok: true, status: 200, json: async () => ({ response: { docs: [imovel1910], numFound: 1 } }) }
+    }) as unknown as typeof fetch
+    const fonte = new MoldSystemsFonte({ ...DEPS_BASE, retries: 1, fetchFn })
+
+    const r = await fonte.buscarTodos()
+
+    expect(r.imoveis).toHaveLength(1)
+    expect((fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2)
+  })
 })
