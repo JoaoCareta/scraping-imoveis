@@ -84,12 +84,13 @@ A resposta de `/imoveis` é um envelope com sabor a evento de domínio:
 { "evento": "ColetaConcluida", "extraidoEm": "...", "total": 42, "rejeitados": 3, "imoveis": [ /* RecursoImovel */ ] }
 ```
 
-### Deploy (docker compose, ao lado do n8n)
+### Deploy (docker compose)
 
 1. `cp .env.example .env` e ajustar.
-2. Em `docker-compose.yml`, pôr o nome da rede docker do n8n em `NOME_DA_REDE_DO_N8N`.
-3. `docker compose up -d --build`.
-4. No n8n, nó **HTTP Request** → `http://scraper-api:3000/imoveis?...` (rede interna).
+2. `docker compose up -d --build`.
+3. A API fica acessível em `http://localhost:3000` (e na rede local, porta 3000)
+   enquanto o container correr. Confirmar com `GET http://localhost:3000/health`.
 
-A API não é exposta à internet pública (rede interna/VPN). Para proteger mesmo
-dentro da rede, preencher `API_KEY` no `.env` e enviar o header `x-api-key`.
+Para proteger, preencher `API_KEY` no `.env` e enviar o header `x-api-key`.
+Para integrar com o n8n no mesmo host, ligar o serviço à rede docker do n8n
+(ver comentário em `docker-compose.yml`) e chamar por `http://scraper-api:3000`.

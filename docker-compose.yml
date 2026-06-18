@@ -4,15 +4,20 @@ services:
     container_name: scraper-api
     restart: unless-stopped
     env_file: .env
-    networks:
-      - n8n_net
+    ports:
+      - "3000:3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-networks:
-  n8n_net:
-    external: true
-    name: NOME_DA_REDE_DO_N8N
+# A API fica acessível em http://localhost:3000 (e na rede local, porta 3000)
+# enquanto o container correr.
+#
+# Para integrar com o n8n no mesmo host, ligar este serviço à rede docker do n8n,
+# adicionando ao serviço:
+#     networks: [n8n_net]
+# e no fim do ficheiro:
+#     networks:
+#       n8n_net: { external: true, name: NOME_DA_REDE_DO_N8N }
