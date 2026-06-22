@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance, FastifyRequest } from "fastify"
 import { Config } from "../config"
 import { ImovelRepository, FiltrosImovel } from "../aplicacao/imovel-repository"
 import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
+import { ehSemPreferencia } from "../aplicacao/sem-preferencia"
 
 interface QueryImoveis {
   finalidade?: "ALUGUER" | "VENDA"
@@ -51,14 +52,15 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     })
   }
 
-  // Remove query params vazios antes da validação — clientes (ex.: o nó do n8n)
-  // podem mandar filtros em branco (finalidade=, bairro=); tratá-los como ausentes.
+  // Blinda os filtros antes da validação: valores vazios OU "coringa" (qualquer,
+  // tanto faz, todos, ambos, indiferente, ...) que o cliente/modelo manda são
+  // removidos — viram ausência de filtro em vez de filtrar por um texto inexistente.
   app.addHook("preValidation", async (req) => {
     const q = req.query as Record<string, unknown> | undefined
     if (q && typeof q === "object") {
       for (const chave of Object.keys(q)) {
         const valor = q[chave]
-        if (valor === "" || (typeof valor === "string" && valor.trim() === "")) {
+        if (typeof valor === "string" && ehSemPreferencia(valor)) {
           delete q[chave]
         }
       }

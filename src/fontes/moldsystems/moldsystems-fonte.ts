@@ -42,7 +42,7 @@ export class MoldSystemsFonte implements FonteDeImoveis {
     this.clienteId = deps.clienteId
     this.numRows = deps.numRows
     this.timeoutMs = deps.timeoutMs
-    this.retries = deps.retries ?? 1
+    this.retries = deps.retries ?? 3
     this.fetchFn = deps.fetchFn ?? fetch
     this.agora = deps.agora ?? (() => new Date())
     this.dormir = deps.dormir ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
@@ -91,7 +91,9 @@ export class MoldSystemsFonte implements FonteDeImoveis {
         if (tentativa < this.retries) await this.dormir(200 * (tentativa + 1))
       }
     }
+    const causa = ultimoErro instanceof Error ? (ultimoErro.cause as { code?: string; message?: string } | undefined) : undefined
     const motivo = ultimoErro instanceof Error ? ultimoErro.message : String(ultimoErro)
-    throw new FonteIndisponivelError(`fonte indisponível em ${this.origin}: ${motivo}`)
+    const detalhe = causa?.message ? ` — ${causa.code ?? "ERR"}: ${causa.message}` : ""
+    throw new FonteIndisponivelError(`fonte indisponível em ${this.origin}: ${motivo}${detalhe}`)
   }
 }

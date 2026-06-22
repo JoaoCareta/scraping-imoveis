@@ -1,18 +1,7 @@
 import { FonteDeImoveis } from "../fontes/fonte-de-imoveis"
 import { imovelParaRecurso, RecursoImovel } from "../domain/leitura/recurso-imovel"
 import { Coleta, FiltrosImovel, ImovelRepository } from "./imovel-repository"
-
-/** Valores "coringa" que o modelo manda para "sem preferência" — tratados como sem filtro. */
-const VALORES_SEM_PREFERENCIA = new Set([
-  "qualquer", "qualquer um", "qualquer uma", "qualquer cidade", "qualquer bairro",
-  "qualquer tipo", "todos", "todas", "todos os tipos", "any", "indiferente",
-  "tanto faz", "nenhum", "nenhuma", "n/a", "na",
-])
-
-function ehSemPreferencia(valor: string): boolean {
-  const v = valor.trim().toLowerCase()
-  return v === "" || VALORES_SEM_PREFERENCIA.has(v)
-}
+import { ehSemPreferencia } from "./sem-preferencia"
 
 export interface FonteImovelRepositoryDeps {
   fonte: FonteDeImoveis

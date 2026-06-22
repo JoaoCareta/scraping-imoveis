@@ -109,4 +109,11 @@ describe("servidor", () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().evento).toBe("ColetaConcluida")
   })
+
+  it("remove valores coringa (qualquer/tanto faz) em vez de filtrar ou dar 400", async () => {
+    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?finalidade=qualquer&bairro=qualquer&tipoImovel=tanto%20faz" })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().evento).toBe("ColetaConcluida")
+  })
 })
