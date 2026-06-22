@@ -51,6 +51,20 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     })
   }
 
+  // Remove query params vazios antes da validação — clientes (ex.: o nó do n8n)
+  // podem mandar filtros em branco (finalidade=, bairro=); tratá-los como ausentes.
+  app.addHook("preValidation", async (req) => {
+    const q = req.query as Record<string, unknown> | undefined
+    if (q && typeof q === "object") {
+      for (const chave of Object.keys(q)) {
+        const valor = q[chave]
+        if (valor === "" || (typeof valor === "string" && valor.trim() === "")) {
+          delete q[chave]
+        }
+      }
+    }
+  })
+
   app.setErrorHandler((erroDesconhecido, _req, reply) => {
     const erro = erroDesconhecido as Error & { statusCode?: number }
     if (erro instanceof FonteTimeoutError) {

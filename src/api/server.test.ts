@@ -102,4 +102,11 @@ describe("servidor", () => {
     expect(body.offset).toBe(1)
     expect(body.imoveis.map((i: { ref: string }) => i.ref)).toEqual(["2", "3"])
   })
+
+  it("ignora query params vazios em vez de dar 400", async () => {
+    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?finalidade=&bairro=&precoMax=2000" })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().evento).toBe("ColetaConcluida")
+  })
 })
