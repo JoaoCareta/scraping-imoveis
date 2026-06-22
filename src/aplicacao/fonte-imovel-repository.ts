@@ -2,6 +2,18 @@ import { FonteDeImoveis } from "../fontes/fonte-de-imoveis"
 import { imovelParaRecurso, RecursoImovel } from "../domain/leitura/recurso-imovel"
 import { Coleta, FiltrosImovel, ImovelRepository } from "./imovel-repository"
 
+/** Valores "coringa" que o modelo manda para "sem preferência" — tratados como sem filtro. */
+const VALORES_SEM_PREFERENCIA = new Set([
+  "qualquer", "qualquer um", "qualquer uma", "qualquer cidade", "qualquer bairro",
+  "qualquer tipo", "todos", "todas", "todos os tipos", "any", "indiferente",
+  "tanto faz", "nenhum", "nenhuma", "n/a", "na",
+])
+
+function ehSemPreferencia(valor: string): boolean {
+  const v = valor.trim().toLowerCase()
+  return v === "" || VALORES_SEM_PREFERENCIA.has(v)
+}
+
 export interface FonteImovelRepositoryDeps {
   fonte: FonteDeImoveis
   agora?: () => Date
@@ -41,7 +53,7 @@ export class FonteImovelRepository implements ImovelRepository {
   private combina(r: RecursoImovel, f: FiltrosImovel): boolean {
     const querAtivo = f.ativo ?? true
     const igualTexto = (a?: string, b?: string) =>
-      b == null || (a ?? "").toLowerCase() === b.toLowerCase()
+      b == null || ehSemPreferencia(b) || (a ?? "").toLowerCase() === b.toLowerCase()
 
     const passaAtivo = r.estado.ativo === querAtivo
     const passaFinalidade = f.finalidade == null || r.finalidade === f.finalidade

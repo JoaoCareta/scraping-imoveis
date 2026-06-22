@@ -95,4 +95,10 @@ describe("FonteImovelRepository", () => {
     expect(c.total).toBe(1)
     expect(c.imoveis.every((i) => i.estado.ativo === false)).toBe(true)
   })
+
+  it("ignora valores coringa (qualquer/todos) como sem filtro", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docAluguel, docVendaEAluguel])) })
+    const c = await repo.buscar({ bairro: "qualquer", tipoImovel: "todos" })
+    expect(c.total).toBe(3)
+  })
 })
