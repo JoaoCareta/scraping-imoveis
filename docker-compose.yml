@@ -12,6 +12,30 @@ services:
       timeout: 5s
       retries: 3
 
+  # PostgreSQL do atendimento Inove (cache de catálogo, conversas, avaliações).
+  # Credenciais LOCAIS DE DEV — trocar em produção (via .env / secrets).
+  postgres:
+    image: postgres:16
+    container_name: inove-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inove
+      POSTGRES_PASSWORD: inove
+      POSTGRES_DB: inove
+    ports:
+      - "5432:5432"
+    volumes:
+      - inove_pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inove -d inove"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  inove_pgdata:
+
 # A API fica acessível em http://localhost:3000 (e na rede local, porta 3000)
 # enquanto o container correr.
 #
