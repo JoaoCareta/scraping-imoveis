@@ -33,6 +33,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # API de leitura com cache: lê o catálogo no Postgres; cai pro scraper só se vazio.
+  cache-api:
+    build: .
+    container_name: cache-api
+    restart: unless-stopped
+    command: ["node", "dist/cache-api/main-cache.js"]
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgres://inove:inove@postgres:5432/inove
+      SCRAPER_URL: http://scraper-api:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - scraper-api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   inove_pgdata:
 
