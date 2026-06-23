@@ -27,8 +27,8 @@ WHERE ($1::text IS NULL OR finalidade = $1)
   AND ($3::int IS NULL OR quartos = $3)
   AND ($4::numeric IS NULL OR preco >= $4)
   AND ($5::numeric IS NULL OR preco <= $5)
-  AND ($6::text IS NULL OR lower(cidade) = lower($6))
-  AND ($7::text IS NULL OR lower(bairro) = lower($7))
+  AND ($6::text IS NULL OR unaccent(lower(cidade)) = unaccent(lower($6)))
+  AND ($7::text IS NULL OR unaccent(lower(bairro)) = unaccent(lower($7)))
   AND ativo = true
 ORDER BY preco ASC NULLS LAST
 LIMIT $8`

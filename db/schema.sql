@@ -2,6 +2,9 @@
 -- Aplicado automaticamente pelo postgres na primeira subida (docker-entrypoint-initdb.d).
 -- Idempotente (IF NOT EXISTS) para reaplicar à mão sem erro.
 
+-- Busca de cidade/bairro insensível a acentos (modelo às vezes manda "Aracatuba" sem ç).
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- =========================================================
 -- ① Catálogo de imóveis (cache do scraper-api)
 -- =========================================================
