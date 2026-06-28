@@ -8,7 +8,7 @@ const propsValidas = (): PropsImovel => ({
   finalidade: "ALUGUER",
   preco: { valor: 800, moeda: "BRL", periodo: "MENSAL" },
   localizacao: { zonaTexto: "Porto" },
-  caracteristicas: { lista: ["garagem"] },
+  caracteristicas: { lista: ["garagem"], itens: [] },
   media: {},
   extras: { piso: 3 },
   estado: { ativo: true, extraidoEm: "2026-06-07T10:00:00.000Z", atualizadoEm: "2026-06-07T10:00:00.000Z", hashConteudo: "h1" },

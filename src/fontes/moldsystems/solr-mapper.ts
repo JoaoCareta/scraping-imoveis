@@ -5,9 +5,11 @@ import { Finalidade } from "../../domain/imovel/finalidade"
 import { PeriodoPreco } from "../../domain/imovel/preco"
 import { PropsLocalizacao } from "../../domain/imovel/localizacao"
 import { Caracteristicas } from "../../domain/imovel/tipos"
+import { Caracteristica } from "../../domain/imovel/caracteristica"
 import { parsearNumeroBr } from "../../normalizadores/numero-br"
 import { parsearInteiro } from "../../normalizadores/inteiro"
 import { MoldSystemsSolrDoc, MoldSystemsChar, MoldSystemsContexto, MoldSystemsFoto } from "./solr-doc"
+import { resolverCaracteristica } from "./caracteristicas-dicionario"
 
 export interface OperacaoPreco {
   finalidade: Finalidade
@@ -73,14 +75,54 @@ export function localizacaoDeDoc(doc: MoldSystemsSolrDoc): PropsLocalizacao {
   return { zonaTexto, bairro: doc.namDistrict, cidade: doc.namCity, estado: doc.namState }
 }
 
+function ehSim(v: string): boolean {
+  return /^sim$/i.test(v.trim())
+}
+function ehNao(v: string): boolean {
+  return /^n[ãa]o$/i.test(v.trim())
+}
+function ehNumerico(v: string): boolean {
+  return /^[\d.,]+$/.test(v.trim())
+}
+
+export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristica[] {
+  const out: Caracteristica[] = []
+  for (const c of lerChars(doc)) {
+    const idt = c.characteristics?.idtCharacteristics
+    if (idt == null) continue
+    const dic = resolverCaracteristica(idt)
+    if (!dic) continue // idt fora do dicionário do site → ignora
+
+    const bruto = (c.desInformation ?? c.desInformationFormatted ?? "").trim()
+    let r
+    if (ehSim(bruto) || ehNao(bruto)) {
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "BOOLEANA", valorBool: ehSim(bruto) })
+    } else if (ehNumerico(bruto)) {
+      const n = parsearNumeroBr(c.desInformationFormatted ?? bruto) ?? Number.parseFloat(bruto)
+      if (!Number.isFinite(n)) continue
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "NUMERICA", valorNum: n })
+    } else {
+      if (bruto.length === 0) continue
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "TEXTO", valorTexto: bruto })
+    }
+    if (r.ok) out.push(r.value)
+  }
+  return out
+}
+
 export function caracteristicasDeDoc(doc: MoldSystemsSolrDoc): Caracteristicas {
+  const itens = caracteristicasItensDeDoc(doc)
+  const lista = itens
+    .filter((i) => i.tipo === "BOOLEANA" && i.valorBool === true)
+    .map((i) => i.rotulo)
   return {
     tipoImovel: tipoSingular(doc.namCategory),
     tipologia: doc.namSubCategory,
     areaM2: areaDeDoc(doc),
     quartos: typeof doc.totalRooms === "number" ? doc.totalRooms : undefined,
     casasBanho: banheirosDeDoc(doc),
-    lista: [],
+    lista,
+    itens,
   }
 }
 
@@ -150,7 +192,7 @@ function hashDeDoc(doc: MoldSystemsSolrDoc): string {
     doc.valLocation, doc.valSales, doc.valCondominium, doc.valMonthIptu,
     doc.totalRooms, doc.totalGarages, doc.namCategory, doc.namSubCategory,
     doc.namDistrict, doc.namCity, doc.namState, doc.flgShowSite, doc.indBusy,
-    doc.indStatus, doc.dtaUpdate,
+    doc.indStatus, doc.dtaUpdate, doc.jsonCharacteristics,
   ].map((v) => String(v ?? "")).join("|")
 }
 

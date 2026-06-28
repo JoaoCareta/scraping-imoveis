@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { finalidadesDeDoc, localizacaoDeDoc, caracteristicasDeDoc, urlSiteDeDoc, fotoPrincipalDeDoc, ativoDeDoc, extrasDeDoc, imoveisDeSolrDoc } from "./solr-mapper"
 import { imovel1910 } from "./fixtures/imovel-1910"
+import { imovel3339 } from "./fixtures/imovel-3339"
 
 const CTX = { clienteId: "innove", origin: "https://imobiliariainnove.com.br", extraidoEm: "2026-06-07T12:00:00.000Z" }
 
@@ -198,5 +199,54 @@ describe("imoveisDeSolrDoc (integração com COD 1910 real)", () => {
   it("imoveisDeSolrDoc com valLocation=0 produz array vazio", () => {
     const r = imoveisDeSolrDoc({ idtProperty: 5, valLocation: 0 }, CTX)
     expect(r).toEqual([])
+  })
+})
+
+describe("caracteristicasItensDeDoc", () => {
+  it("classifica booleana 'Sim' e anexa grupo", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const sacada = c.itens.find((i) => i.chave === "sacada")
+    expect(sacada?.tipo).toBe("BOOLEANA")
+    expect(sacada?.valorBool).toBe(true)
+    expect(sacada?.grupo).toBe("sacada")
+  })
+
+  it("preserva quantidade de elevadores como numérica", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const elevador = c.itens.find((i) => i.chave === "elevador-social")
+    expect(elevador?.tipo).toBe("NUMERICA")
+    expect(elevador?.valorNum).toBe(2)
+    expect(elevador?.grupo).toBe("elevador")
+  })
+
+  it("classifica categórica como texto", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const padrao = c.itens.find((i) => i.chave === "padrao-de-acabamento")
+    expect(padrao?.tipo).toBe("TEXTO")
+    expect(padrao?.valorTexto).toBe("Alto")
+  })
+
+  it("ignora idt fora do dicionário", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    expect(c.itens.some((i) => i.idtFonte === 9999999)).toBe(false)
+  })
+
+  it("numérica zero não entra na lista de comodidades, mas fica em itens", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const copas = c.itens.find((i) => i.idtFonte === 9)
+    expect(copas?.tipo).toBe("NUMERICA")
+    expect(copas?.valorNum).toBe(0)
+  })
+
+  it("lista deriva os rótulos das booleanas verdadeiras", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    expect(c.lista).toContain("Sacada")
+    expect(c.lista).toContain("Piscina")
+    expect(c.lista).toContain("Elevador de Serviço")
+    expect(c.lista).not.toContain("Elevador Social") // é NUMERICA (qtd 2), não booleana
+  })
+
+  it("imovel1910 (sem booleanas verdadeiras) mantém lista vazia", () => {
+    expect(caracteristicasDeDoc(imovel1910).lista).toEqual([])
   })
 })
