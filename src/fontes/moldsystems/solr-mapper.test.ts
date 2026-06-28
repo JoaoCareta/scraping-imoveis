@@ -249,4 +249,18 @@ describe("caracteristicasItensDeDoc", () => {
   it("imovel1910 (sem booleanas verdadeiras) mantém lista vazia", () => {
     expect(caracteristicasDeDoc(imovel1910).lista).toEqual([])
   })
+
+  it("classifica 'Não' como booleana falsa (fica em itens, fora de lista)", () => {
+    const doc = {
+      ...imovel3339,
+      jsonCharacteristics: JSON.stringify([
+        { desInformation: "Não", desInformationFormatted: "Não", characteristics: { idtCharacteristics: 76 } }, // Portaria 24 Hrs
+      ]),
+    }
+    const c = caracteristicasDeDoc(doc)
+    const portaria = c.itens.find((i) => i.idtFonte === 76)
+    expect(portaria?.tipo).toBe("BOOLEANA")
+    expect(portaria?.valorBool).toBe(false)
+    expect(c.lista).not.toContain("Portaria 24 Hrs")
+  })
 })

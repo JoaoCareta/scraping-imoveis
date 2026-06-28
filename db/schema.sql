@@ -25,8 +25,9 @@ CREATE INDEX IF NOT EXISTS idx_imovel_filtros ON imovel (finalidade, tipo_imovel
 CREATE INDEX IF NOT EXISTS idx_imovel_preco   ON imovel (preco);
 
 -- Busca por presença de comodidades (slugs + grupos no payload).
+-- jsonb_path_ops: índice menor/mais rápido — só precisamos do operador de contenção (@>).
 CREATE INDEX IF NOT EXISTS idx_imovel_comodidades
-  ON imovel USING GIN ((payload->'caracteristicas'->'comodidades'));
+  ON imovel USING GIN ((payload->'caracteristicas'->'comodidades') jsonb_path_ops);
 
 -- =========================================================
 -- ② Conversas (event store, append-only)

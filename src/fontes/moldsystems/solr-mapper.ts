@@ -82,7 +82,8 @@ function ehNao(v: string): boolean {
   return /^n[ãa]o$/i.test(v.trim())
 }
 function ehNumerico(v: string): boolean {
-  return /^[\d.,]+$/.test(v.trim())
+  // Exige ao menos um dígito inicial — rejeita degenerados como "." / "," / "..."
+  return /^\d[\d.,]*$/.test(v.trim())
 }
 
 export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristica[] {
@@ -98,7 +99,8 @@ export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristi
     if (ehSim(bruto) || ehNao(bruto)) {
       r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "BOOLEANA", valorBool: ehSim(bruto) })
     } else if (ehNumerico(bruto)) {
-      const n = parsearNumeroBr(c.desInformationFormatted ?? bruto) ?? Number.parseFloat(bruto)
+      // Formatado é BR (vírgula decimal) → parsearNumeroBr; bruto pode ser ponto-decimal → parseFloat.
+      const n = (c.desInformationFormatted ? parsearNumeroBr(c.desInformationFormatted) : null) ?? Number.parseFloat(bruto)
       if (!Number.isFinite(n)) continue
       r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "NUMERICA", valorNum: n })
     } else {
