@@ -7,13 +7,27 @@ export interface RecursoImovel {
   urlSite: string
   finalidade: "ALUGUER" | "VENDA"
   preco: { valor: number; moeda: string; periodo: string }
-  localizacao: { zonaTexto: string; bairro?: string; cidade?: string; estado?: string }
+  localizacao: {
+    zonaTexto: string
+    bairro?: string
+    cidade?: string
+    estado?: string
+    rua?: string
+    numero?: string
+    cep?: string
+    andar?: number
+    pontoReferencia?: string
+    condominio?: string
+    geo?: { lat: number; lng: number }
+  }
   caracteristicas: {
     tipoImovel?: string
     tipologia?: string
     areaM2?: number
     quartos?: number
     casasBanho?: number
+    titulo?: string
+    descricao?: string
     lista: string[]
     itens: Array<{
       idtFonte: number
@@ -24,10 +38,11 @@ export interface RecursoImovel {
       valorBool?: boolean
       valorNum?: number
       valorTexto?: string
+      origem: "IMOVEL" | "CONDOMINIO"
     }>
     comodidades: string[]
   }
-  media: { fotoPrincipal?: string }
+  media: { fotoPrincipal?: string; video?: string; fotosCondominio?: string[] }
   extras: Record<string, unknown>
   estado: { ativo: boolean; extraidoEm: string; atualizadoEm: string; hashConteudo: string }
 }
@@ -44,6 +59,13 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
       bairro: imovel.localizacao.bairro,
       cidade: imovel.localizacao.cidade,
       estado: imovel.localizacao.estado,
+      rua: imovel.localizacao.rua,
+      numero: imovel.localizacao.numero,
+      cep: imovel.localizacao.cep,
+      andar: imovel.localizacao.andar,
+      pontoReferencia: imovel.localizacao.pontoReferencia,
+      condominio: imovel.localizacao.condominio,
+      geo: imovel.localizacao.geo ? { lat: imovel.localizacao.geo.lat, lng: imovel.localizacao.geo.lng } : undefined,
     },
     caracteristicas: (() => {
       const itens = imovel.caracteristicas.itens.map((i) => ({
@@ -55,12 +77,16 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
         valorBool: i.valorBool,
         valorNum: i.valorNum,
         valorTexto: i.valorTexto,
+        origem: i.origem,
       }))
       const comodidades = [
         ...new Set(
           itens
             .filter((i) => i.tipo === "BOOLEANA" && i.valorBool === true)
-            .flatMap((i) => (i.grupo ? [i.chave, i.grupo] : [i.chave])),
+            .flatMap((i) => {
+              const base = i.grupo ? [i.chave, i.grupo] : [i.chave]
+              return i.origem === "CONDOMINIO" ? [...base, "condominio"] : base
+            }),
         ),
       ]
       return {
@@ -69,12 +95,18 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
         areaM2: imovel.caracteristicas.areaM2,
         quartos: imovel.caracteristicas.quartos,
         casasBanho: imovel.caracteristicas.casasBanho,
+        titulo: imovel.caracteristicas.titulo,
+        descricao: imovel.caracteristicas.descricao,
         lista: [...imovel.caracteristicas.lista],
         itens,
         comodidades,
       }
     })(),
-    media: { fotoPrincipal: imovel.media.fotoPrincipal },
+    media: {
+      fotoPrincipal: imovel.media.fotoPrincipal,
+      video: imovel.media.video,
+      fotosCondominio: imovel.media.fotosCondominio ? [...imovel.media.fotosCondominio] : undefined,
+    },
     extras: { ...imovel.extras },
     estado: {
       ativo: imovel.estado.ativo,
