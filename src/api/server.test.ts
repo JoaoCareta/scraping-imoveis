@@ -14,7 +14,7 @@ function recurso(ref: string, finalidade: "ALUGUER" | "VENDA"): Coleta["imoveis"
     ref, clienteId: "innove", urlSite: "https://x/" + ref, finalidade,
     preco: { valor: 1000, moeda: "BRL", periodo: "MENSAL" },
     localizacao: { zonaTexto: "Centro", cidade: "Bauru" },
-    caracteristicas: { lista: [] }, media: {}, extras: {},
+    caracteristicas: { lista: [], itens: [], comodidades: [] }, media: {}, extras: {},
     estado: { ativo: true, extraidoEm: "2026-06-18T10:00:00.000Z", atualizadoEm: "2026-06-18T10:00:00.000Z", hashConteudo: "h" },
   }
 }

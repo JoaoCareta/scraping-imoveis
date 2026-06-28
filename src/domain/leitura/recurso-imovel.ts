@@ -15,6 +15,17 @@ export interface RecursoImovel {
     quartos?: number
     casasBanho?: number
     lista: string[]
+    itens: Array<{
+      idtFonte: number
+      chave: string
+      rotulo: string
+      grupo?: string
+      tipo: "BOOLEANA" | "NUMERICA" | "TEXTO"
+      valorBool?: boolean
+      valorNum?: number
+      valorTexto?: string
+    }>
+    comodidades: string[]
   }
   media: { fotoPrincipal?: string }
   extras: Record<string, unknown>
@@ -34,14 +45,35 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
       cidade: imovel.localizacao.cidade,
       estado: imovel.localizacao.estado,
     },
-    caracteristicas: {
-      tipoImovel: imovel.caracteristicas.tipoImovel,
-      tipologia: imovel.caracteristicas.tipologia,
-      areaM2: imovel.caracteristicas.areaM2,
-      quartos: imovel.caracteristicas.quartos,
-      casasBanho: imovel.caracteristicas.casasBanho,
-      lista: [...imovel.caracteristicas.lista],
-    },
+    caracteristicas: (() => {
+      const itens = imovel.caracteristicas.itens.map((i) => ({
+        idtFonte: i.idtFonte,
+        chave: i.chave,
+        rotulo: i.rotulo,
+        grupo: i.grupo,
+        tipo: i.tipo,
+        valorBool: i.valorBool,
+        valorNum: i.valorNum,
+        valorTexto: i.valorTexto,
+      }))
+      const comodidades = [
+        ...new Set(
+          itens
+            .filter((i) => i.tipo === "BOOLEANA" && i.valorBool === true)
+            .flatMap((i) => (i.grupo ? [i.chave, i.grupo] : [i.chave])),
+        ),
+      ]
+      return {
+        tipoImovel: imovel.caracteristicas.tipoImovel,
+        tipologia: imovel.caracteristicas.tipologia,
+        areaM2: imovel.caracteristicas.areaM2,
+        quartos: imovel.caracteristicas.quartos,
+        casasBanho: imovel.caracteristicas.casasBanho,
+        lista: [...imovel.caracteristicas.lista],
+        itens,
+        comodidades,
+      }
+    })(),
     media: { fotoPrincipal: imovel.media.fotoPrincipal },
     extras: { ...imovel.extras },
     estado: {
