@@ -34,6 +34,40 @@ export interface MoldSystemsSolrDoc {
   jsonCharacteristics?: string
   dtaUpdate?: string
   idtTenant?: string
+  // --- Endereço estruturado ---
+  namStreet?: string
+  numNumber?: string | number
+  numPostalArea?: string | number
+  numFloor?: string | number
+  desReferencePoint?: string
+  latitudeAndLongitude?: string
+  namCondominium?: string
+  // --- Apresentação ---
+  desTitleSite?: string
+  desInformationSite?: string
+  desObservation?: string
+  // --- Mídia ---
+  urlVideo?: string
+  jsonPhotosCondominium?: string
+  // --- Condomínio (características) ---
+  jsonCondominiumCharacteristics?: string
+  // --- Extras fiscais/diversos ---
+  valIptu?: number
+  numParcelsIptu?: number
+  valSumLocationAndCondominium?: number
+  numApartment?: string | number
+  numBlock?: string | number
+  numLandBlock?: string | number
+  numLandLot?: string | number
+  desAddressObservation?: string
+  desBranchActivity?: string
+  flg360?: boolean | number
+  flgHideValSaleSite?: boolean | number
+  flgHideValLocationSite?: boolean | number
+  flgHighlight?: boolean | number
+  dtaRegister?: string
+  namCondominiumPlant?: string
+  desAddressObservationCondominium?: string
 }
 
 export interface MoldSystemsContexto {
