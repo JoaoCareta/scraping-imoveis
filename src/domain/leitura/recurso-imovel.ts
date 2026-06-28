@@ -79,10 +79,17 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
         valorTexto: i.valorTexto,
         origem: i.origem,
       }))
+      // Uma comodidade "está presente" se é booleana verdadeira OU é numérica >0
+      // de um conceito curado (tem grupo) — ex.: "Elevador Social: 2" conta como
+      // ter elevador. O gate por grupo evita poluir com numéricos estruturais
+      // (área, dormitórios, salas) que não têm grupo.
+      const presente = (i: { tipo: string; valorBool?: boolean; valorNum?: number; grupo?: string }) =>
+        (i.tipo === "BOOLEANA" && i.valorBool === true) ||
+        (i.tipo === "NUMERICA" && typeof i.valorNum === "number" && i.valorNum > 0 && i.grupo != null)
       const comodidades = [
         ...new Set(
           itens
-            .filter((i) => i.tipo === "BOOLEANA" && i.valorBool === true)
+            .filter(presente)
             .flatMap((i) => {
               const base = i.grupo ? [i.chave, i.grupo] : [i.chave]
               return i.origem === "CONDOMINIO" ? [...base, "condominio"] : base

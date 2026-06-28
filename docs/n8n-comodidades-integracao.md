@@ -80,10 +80,11 @@ Cada imóvel retornado traz, além dos campos antigos:
 
 ## 4. Limitações conhecidas (atenção no atendimento)
 
-1. **Comodidade cadastrada como quantidade não entra no filtro.** O filtro `comodidades`
-   só considera itens marcados "Sim". Ex.: "Elevador Social: 2" (quantidade) **não** casa
-   em `comodidades` — só casa se o imóvel também tiver um elevador booleano. Por isso a
-   regra 4: ao não achar, leia `itens` (lá a quantidade aparece em `valorNum`).
+1. **Comodidade numérica de conceito SEM grupo curado não entra no filtro.** O filtro
+   `comodidades` considera itens "Sim" **e** numéricos >0 que pertencem a um grupo curado
+   (ex.: "Elevador Social: 2" agora conta como `elevador` ✅). Mas numéricos sem grupo
+   (ex.: nº de garagens) continuam fora. Ao não achar, leia `itens` (a quantidade está em
+   `valorNum`) antes de afirmar ausência.
 2. **Conceitos genéricos sem grupo voltam vazio se mandar a frase.** Só `elevador, piscina,
    churrasqueira, sacada, portaria` são "guarda-chuva" (pegam variantes). O resto exige o
    slug exato da tabela.
@@ -91,9 +92,9 @@ Cada imóvel retornado traz, além dos campos antigos:
    marcação, então `condominio-fechado` pode voltar vazio mesmo havendo casas em condomínio.
    Sinal alternativo: `localizacao.condominio` preenchido (lido de `itens`/payload).
 
-> Follow-ons recomendados (melhoram muito a cobertura): (a) tratar característica
-> NUMÉRICA>0 também como presença em `comodidades` (resolve a limitação #1); (b) expandir
-> os GRUPOS curados (lazer, segurança, garagem) além dos 5 atuais.
+> Follow-on recomendado: expandir os GRUPOS curados (lazer, segurança, garagem) além dos 5
+> atuais — aumenta a cobertura de termos genéricos (limitação #2). A limitação de comodidade
+> numérica (antes #1) já foi mitigada: numéricos >0 de grupos curados contam como presença.
 
 ---
 

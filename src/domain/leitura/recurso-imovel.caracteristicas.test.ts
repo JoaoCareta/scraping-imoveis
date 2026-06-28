@@ -23,6 +23,19 @@ describe("recurso-imovel — características", () => {
     const set = new Set(rec.caracteristicas.comodidades)
     expect(set.size).toBe(rec.caracteristicas.comodidades.length) // sem duplicatas
   })
+
+  it("promove comodidade NUMÉRICA>0 com grupo curado e ignora numérica sem grupo", () => {
+    const r = imoveisDeSolrDoc(imovel3339, CTX).find((x) => x.ok)
+    expect(r?.ok).toBe(true)
+    if (!r || !r.ok) return
+    const rec = imovelParaRecurso(r.value)
+
+    // idt 97 "Elevador Social" veio como "2" (NUMERICA, grupo 'elevador') → entra
+    expect(rec.caracteristicas.comodidades).toContain("elevador-social")
+    expect(rec.caracteristicas.comodidades).toContain("elevador")
+    // idt 95 "Área Útil" (NUMERICA, SEM grupo) → não polui comodidades
+    expect(rec.caracteristicas.comodidades).not.toContain("area-util")
+  })
 })
 
 describe("recurso-imovel — localização, mídia e condomínio", () => {
