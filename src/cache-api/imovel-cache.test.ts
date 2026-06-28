@@ -31,12 +31,34 @@ describe("imovel-cache", () => {
     // Run Test
     await buscarNoCache(consulta, f)
 
-    // Assert — ordem: finalidade, tipoImovel, quartos, precoMin, precoMax, cidade, bairro, limit
+    // Assert — ordem: finalidade, tipoImovel, quartos, precoMin, precoMax, cidade, bairro, comodidades, limit
     expect(capturado[0]).toBe("ALUGUER")
     expect(capturado[1]).toBe("casa")
     expect(capturado[5]).toBeNull()
     expect(capturado[6]).toBeNull()
-    expect(capturado[7]).toBe(10)
+    expect(capturado[7]).toBeNull()   // comodidades (ausente → NULL)
+    expect(capturado[8]).toBe(10)     // limit
+  })
+
+  it("buscarNoCache aplica comodidades como JSONB containment", async () => {
+    let capturado: unknown[] = []
+    const consulta: Consulta = async (_sql, params) => {
+      capturado = params
+      return { rows: [] }
+    }
+    await buscarNoCache(consulta, { comodidades: ["elevador", "sacada"], limit: 10 })
+    expect(capturado[7]).toBe(JSON.stringify(["elevador", "sacada"]))
+    expect(capturado[8]).toBe(10)
+  })
+
+  it("buscarNoCache ignora comodidades vazias ou coringas (NULL)", async () => {
+    let capturado: unknown[] = []
+    const consulta: Consulta = async (_sql, params) => {
+      capturado = params
+      return { rows: [] }
+    }
+    await buscarNoCache(consulta, { comodidades: ["qualquer", "  "], limit: 5 })
+    expect(capturado[7]).toBeNull()
   })
 
   it("buscarNoCache devolve os payloads das linhas", async () => {

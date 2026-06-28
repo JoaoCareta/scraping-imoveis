@@ -10,6 +10,7 @@ export interface FiltrosCache {
   precoMax?: number
   cidade?: string
   bairro?: string
+  comodidades?: string[]
   limit: number
 }
 
@@ -29,14 +30,21 @@ WHERE ($1::text IS NULL OR finalidade = $1)
   AND ($5::numeric IS NULL OR preco <= $5)
   AND ($6::text IS NULL OR unaccent(lower(cidade)) = unaccent(lower($6)))
   AND ($7::text IS NULL OR unaccent(lower(bairro)) = unaccent(lower($7)))
+  AND ($8::jsonb IS NULL OR payload->'caracteristicas'->'comodidades' @> $8::jsonb)
   AND ativo = true
 ORDER BY preco ASC NULLS LAST
-LIMIT $8`
+LIMIT $9`
 
 /** Coringas ("qualquer", "tanto faz", ...) e vazios viram NULL = sem filtro. */
 function semFiltro(valor?: string): string | null {
   if (valor == null) return null
   return ehSemPreferencia(valor) ? null : valor
+}
+
+function comodidadesFiltro(valores?: string[]): string | null {
+  if (!valores) return null
+  const limpas = valores.map((v) => (v ?? "").trim()).filter((v) => v.length > 0 && !ehSemPreferencia(v))
+  return limpas.length === 0 ? null : JSON.stringify(limpas)
 }
 
 export async function contarCache(consulta: Consulta): Promise<number> {
@@ -57,6 +65,7 @@ export async function buscarNoCache(
     f.precoMax ?? null,
     semFiltro(f.cidade),
     semFiltro(f.bairro),
+    comodidadesFiltro(f.comodidades),
     f.limit,
   ]
   const r = await consulta(SQL_BUSCA, params)
