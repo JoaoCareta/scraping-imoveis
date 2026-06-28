@@ -115,9 +115,9 @@ function ehNumerico(v: string): boolean {
   return /^\d[\d.,]*$/.test(v.trim())
 }
 
-export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristica[] {
+function itensDeChars(chars: MoldSystemsChar[], origem: "IMOVEL" | "CONDOMINIO"): Caracteristica[] {
   const out: Caracteristica[] = []
-  for (const c of lerChars(doc)) {
+  for (const c of chars) {
     const idt = c.characteristics?.idtCharacteristics
     if (idt == null) continue
     const dic = resolverCaracteristica(idt)
@@ -126,25 +126,40 @@ export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristi
     const bruto = (c.desInformation ?? c.desInformationFormatted ?? "").trim()
     let r
     if (ehSim(bruto) || ehNao(bruto)) {
-      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "BOOLEANA", valorBool: ehSim(bruto) })
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "BOOLEANA", valorBool: ehSim(bruto), origem })
     } else if (ehNumerico(bruto)) {
-      // Formatado é BR (vírgula decimal) → parsearNumeroBr; bruto pode ser ponto-decimal → parseFloat.
       const n = (c.desInformationFormatted ? parsearNumeroBr(c.desInformationFormatted) : null) ?? Number.parseFloat(bruto)
       if (!Number.isFinite(n)) continue
-      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "NUMERICA", valorNum: n })
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "NUMERICA", valorNum: n, origem })
     } else {
       if (bruto.length === 0) continue
-      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "TEXTO", valorTexto: bruto })
+      r = Caracteristica.criar({ idtFonte: idt, chave: dic.chave, rotulo: dic.rotulo, grupo: dic.grupo, tipo: "TEXTO", valorTexto: bruto, origem })
     }
     if (r.ok) out.push(r.value)
   }
   return out
 }
 
+export function caracteristicasItensDeDoc(doc: MoldSystemsSolrDoc): Caracteristica[] {
+  return itensDeChars(lerChars(doc), "IMOVEL")
+}
+
+function lerCharsCondominio(doc: MoldSystemsSolrDoc): MoldSystemsChar[] {
+  try {
+    return JSON.parse(doc.jsonCondominiumCharacteristics ?? "[]") as MoldSystemsChar[]
+  } catch {
+    return []
+  }
+}
+
+export function caracteristicasCondominioDeDoc(doc: MoldSystemsSolrDoc): Caracteristica[] {
+  return itensDeChars(lerCharsCondominio(doc), "CONDOMINIO")
+}
+
 export function caracteristicasDeDoc(doc: MoldSystemsSolrDoc): Caracteristicas {
-  const itens = caracteristicasItensDeDoc(doc)
+  const itens = [...caracteristicasItensDeDoc(doc), ...caracteristicasCondominioDeDoc(doc)]
   const lista = itens
-    .filter((i) => i.tipo === "BOOLEANA" && i.valorBool === true)
+    .filter((i) => i.origem === "IMOVEL" && i.tipo === "BOOLEANA" && i.valorBool === true)
     .map((i) => i.rotulo)
   return {
     tipoImovel: tipoSingular(doc.namCategory),

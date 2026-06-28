@@ -305,3 +305,24 @@ describe("apresentação e mídia", () => {
     }
   })
 })
+
+describe("características do condomínio", () => {
+  it("inclui itens do condomínio com origem CONDOMINIO", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const playground = c.itens.find((i) => i.chave === "playground")
+    expect(playground).toBeDefined()
+    expect(playground?.origem).toBe("CONDOMINIO")
+  })
+
+  it("itens do imóvel permanecem com origem IMOVEL", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    const sacada = c.itens.find((i) => i.chave === "sacada")
+    expect(sacada?.origem).toBe("IMOVEL")
+  })
+
+  it("lista (rótulos) NÃO inclui amenidades do condomínio", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    // 'Playground' só existe no condomínio nesta fixture → não entra na lista do imóvel
+    expect(c.lista).not.toContain("Playground")
+  })
+})
