@@ -13,8 +13,16 @@ interface QueryImoveis {
   bairro?: string
   tipoImovel?: string
   ativo?: boolean
+  comodidades?: string
   limit?: number
   offset?: number
+}
+
+/** "piscina,portaria" → ["piscina","portaria"]; vazio → undefined. */
+function lista(valor?: string): string[] | undefined {
+  if (valor == null || valor.trim() === "") return undefined
+  const itens = valor.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+  return itens.length > 0 ? itens : undefined
 }
 
 const SCHEMA_IMOVEIS = {
@@ -30,6 +38,7 @@ const SCHEMA_IMOVEIS = {
       bairro: { type: "string" },
       tipoImovel: { type: "string" },
       ativo: { type: "boolean" },
+      comodidades: { type: "string" },
       limit: { type: "integer", minimum: 1, maximum: 500, default: 100 },
       offset: { type: "integer", minimum: 0, default: 0 },
     },
@@ -109,6 +118,7 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
         bairro: q.bairro,
         tipoImovel: q.tipoImovel,
         ativo: q.ativo,
+        comodidades: lista(q.comodidades),
       }
       const coleta = await repo.buscar(filtros)
       // total = nº de imóveis que casam os filtros (antes da paginação); imoveis = a página.

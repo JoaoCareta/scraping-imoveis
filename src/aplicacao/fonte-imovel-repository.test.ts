@@ -3,6 +3,7 @@ import { FonteImovelRepository } from "./fonte-imovel-repository"
 import { FonteDeImoveis, ResultadoExtracao } from "../fontes/fonte-de-imoveis"
 import { imoveisDeSolrDoc } from "../fontes/moldsystems/solr-mapper"
 import { imovel1910 } from "../fontes/moldsystems/fixtures/imovel-1910"
+import { imovel3339 } from "../fontes/moldsystems/fixtures/imovel-3339"
 import { isOk } from "../shared/result"
 import { Imovel } from "../domain/imovel/imovel"
 import { MoldSystemsSolrDoc } from "../fontes/moldsystems/solr-doc"
@@ -100,5 +101,30 @@ describe("FonteImovelRepository", () => {
     const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docAluguel, docVendaEAluguel])) })
     const c = await repo.buscar({ bairro: "qualquer", tipoImovel: "todos" })
     expect(c.total).toBe(3)
+  })
+
+  it("filtra por comodidades exigindo todas as pedidas (AND)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
+    const c = await repo.buscar({ comodidades: ["piscina", "sacada"] })
+    expect(c.total).toBe(1)
+    expect(c.imoveis[0].caracteristicas.comodidades).toEqual(expect.arrayContaining(["piscina", "sacada"]))
+  })
+
+  it("exclui imóvel quando falta alguma comodidade pedida", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
+    const c = await repo.buscar({ comodidades: ["piscina", "churrasqueira"] })
+    expect(c.total).toBe(0)
+  })
+
+  it("filtra pelo marcador 'condominio' (amenidade do condomínio)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
+    const c = await repo.buscar({ comodidades: ["condominio"] })
+    expect(c.total).toBe(1)
+  })
+
+  it("comodidades vazio ou coringa = sem filtro", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
+    expect((await repo.buscar({ comodidades: [] })).total).toBe(1)
+    expect((await repo.buscar({ comodidades: ["qualquer"] })).total).toBe(1)
   })
 })

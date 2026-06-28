@@ -53,6 +53,14 @@ export class FonteImovelRepository implements ImovelRepository {
     const passaBairro = igualTexto(r.localizacao.bairro, f.bairro)
     const passaTipo = igualTexto(r.caracteristicas.tipoImovel, f.tipoImovel)
 
+    // comodidades: exige que TODAS as pedidas (slug, ex.: "piscina") estejam presentes.
+    // Coringas/vazios são ignorados (sem filtro), igual aos demais campos.
+    const querComodidades = (f.comodidades ?? [])
+      .map((c) => (c ?? "").trim().toLowerCase())
+      .filter((c) => c.length > 0 && !ehSemPreferencia(c))
+    const passaComodidades =
+      querComodidades.length === 0 || querComodidades.every((c) => r.caracteristicas.comodidades.includes(c))
+
     return (
       passaAtivo &&
       passaFinalidade &&
@@ -61,7 +69,8 @@ export class FonteImovelRepository implements ImovelRepository {
       passaQuartos &&
       passaCidade &&
       passaBairro &&
-      passaTipo
+      passaTipo &&
+      passaComodidades
     )
   }
 }

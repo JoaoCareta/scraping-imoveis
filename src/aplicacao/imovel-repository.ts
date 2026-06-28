@@ -9,6 +9,7 @@ export interface FiltrosImovel {
   bairro?: string
   tipoImovel?: string
   ativo?: boolean
+  comodidades?: string[]
 }
 
 /** Resultado de "ColetarImoveis" (envelope ColetaConcluida). */

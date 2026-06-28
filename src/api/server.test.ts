@@ -37,6 +37,17 @@ describe("servidor", () => {
     expect(res.json().status).toBe("ok")
   })
 
+  it("GET /imoveis?comodidades=piscina,portaria → repassa array para o repo", async () => {
+    let recebido: FiltrosImovel | undefined
+    const app = criarServidor(
+      repoFake({ buscar: async (f) => { recebido = f; return { imoveis: [], total: 0, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" } } }),
+      CONFIG_BASE,
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?comodidades=piscina,portaria" })
+    expect(res.statusCode).toBe(200)
+    expect(recebido?.comodidades).toEqual(["piscina", "portaria"])
+  })
+
   it("GET /imoveis → 200 envelope ColetaConcluida", async () => {
     const app = criarServidor(repoFake(), CONFIG_BASE)
     const res = await app.inject({ method: "GET", url: "/imoveis" })
