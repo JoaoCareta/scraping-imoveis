@@ -1,3 +1,5 @@
+import { Caracteristica } from "./caracteristica"
+
 export interface Caracteristicas {
   readonly tipoImovel?: string
   readonly tipologia?: string
@@ -5,6 +7,7 @@ export interface Caracteristicas {
   readonly quartos?: number
   readonly casasBanho?: number
   readonly lista: readonly string[]
+  readonly itens: readonly Caracteristica[]
 }
 
 export interface Media {
