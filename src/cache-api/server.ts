@@ -20,12 +20,18 @@ interface QueryImoveis {
   cidade?: string
   bairro?: string
   limit?: string
+  comodidades?: string
 }
 
 function numero(valor?: string): number | undefined {
   if (valor == null || valor.trim() === "") return undefined
   const n = Number(valor)
   return Number.isFinite(n) ? n : undefined
+}
+
+function lista(valor?: string): string[] | undefined {
+  if (valor == null || valor.trim() === "") return undefined
+  return valor.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
 }
 
 function apenasPreenchidos(q: QueryImoveis): Record<string, string> {
@@ -54,6 +60,7 @@ export function criarCacheServer(deps: CacheServerDeps): FastifyInstance {
           precoMax: numero(q.precoMax),
           cidade: q.cidade,
           bairro: q.bairro,
+          comodidades: lista(q.comodidades),
           limit: numero(q.limit) ?? 10,
         }
         const imoveis = await deps.buscar(filtros)

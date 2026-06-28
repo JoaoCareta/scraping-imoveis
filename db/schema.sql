@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS imovel (
 CREATE INDEX IF NOT EXISTS idx_imovel_filtros ON imovel (finalidade, tipo_imovel, quartos, cidade, bairro);
 CREATE INDEX IF NOT EXISTS idx_imovel_preco   ON imovel (preco);
 
+-- Busca por presença de comodidades (slugs + grupos no payload).
+CREATE INDEX IF NOT EXISTS idx_imovel_comodidades
+  ON imovel USING GIN ((payload->'caracteristicas'->'comodidades'));
+
 -- =========================================================
 -- ② Conversas (event store, append-only)
 -- =========================================================

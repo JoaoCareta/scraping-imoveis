@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { criarCacheServer, CacheServerDeps } from "./server"
+import { FiltrosCache } from "./imovel-cache"
 
 function deps(over: Partial<CacheServerDeps> = {}): CacheServerDeps {
   return {
@@ -84,5 +85,21 @@ describe("cache-api server", () => {
     // Assert
     expect(res.statusCode).toBe(200)
     expect(chamouScraper).toBe(true)
+  })
+
+  it("repassa comodidades (CSV) como array para a busca", async () => {
+    let filtrosRecebidos: FiltrosCache | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async () => 5,
+        buscar: async (f) => {
+          filtrosRecebidos = f as FiltrosCache
+          return []
+        },
+      }),
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?comodidades=elevador,sacada" })
+    expect(res.statusCode).toBe(200)
+    expect(filtrosRecebidos?.comodidades).toEqual(["elevador", "sacada"])
   })
 })
