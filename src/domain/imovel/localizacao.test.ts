@@ -30,3 +30,43 @@ describe("Localizacao", () => {
     if (l.ok) expect(l.value.estado).toBe("SP")
   })
 })
+
+describe("Localizacao endereço estruturado", () => {
+  it("armazena rua, numero, cep, andar, ponto de referência e condomínio (com trim)", () => {
+    const l = Localizacao.criar({
+      zonaTexto: "Centro", rua: "  Rua Pará  ", numero: " 70 ", cep: "16011015",
+      andar: 4, pontoReferencia: " ao lado da praça ", condominio: " Residencial Madri ",
+    })
+    expect(l.ok).toBe(true)
+    if (l.ok) {
+      expect(l.value.rua).toBe("Rua Pará")
+      expect(l.value.numero).toBe("70")
+      expect(l.value.cep).toBe("16011015")
+      expect(l.value.andar).toBe(4)
+      expect(l.value.pontoReferencia).toBe("ao lado da praça")
+      expect(l.value.condominio).toBe("Residencial Madri")
+    }
+  })
+
+  it("armazena geo quando lat/lng finitos", () => {
+    const l = Localizacao.criar({ zonaTexto: "Centro", geo: { lat: -21.21, lng: -50.44 } })
+    expect(l.ok).toBe(true)
+    if (l.ok) expect(l.value.geo).toEqual({ lat: -21.21, lng: -50.44 })
+  })
+
+  it("descarta geo com valores não finitos", () => {
+    const l = Localizacao.criar({ zonaTexto: "Centro", geo: { lat: NaN, lng: -50 } })
+    expect(l.ok).toBe(true)
+    if (l.ok) expect(l.value.geo).toBeUndefined()
+  })
+
+  it("campos novos ausentes ficam undefined", () => {
+    const l = Localizacao.criar({ zonaTexto: "Centro" })
+    expect(l.ok).toBe(true)
+    if (l.ok) {
+      expect(l.value.rua).toBeUndefined()
+      expect(l.value.andar).toBeUndefined()
+      expect(l.value.geo).toBeUndefined()
+    }
+  })
+})
