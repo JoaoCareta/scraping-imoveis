@@ -67,3 +67,17 @@ describe("Caracteristica", () => {
     if (!r.ok) expect(r.error.campo).toBe("valor")
   })
 })
+
+describe("Caracteristica origem", () => {
+  it("default origem é IMOVEL quando não informado", () => {
+    const r = Caracteristica.criar({ idtFonte: 1, chave: "x", rotulo: "X", tipo: "BOOLEANA", valorBool: true })
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.origem).toBe("IMOVEL")
+  })
+
+  it("aceita origem CONDOMINIO", () => {
+    const r = Caracteristica.criar({ idtFonte: 15, chave: "piscina", rotulo: "Piscina", tipo: "BOOLEANA", valorBool: true, origem: "CONDOMINIO" })
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.origem).toBe("CONDOMINIO")
+  })
+})

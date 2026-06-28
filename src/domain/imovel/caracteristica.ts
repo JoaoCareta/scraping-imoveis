@@ -2,6 +2,7 @@ import { Result, ok, err } from "../../shared/result"
 import { ErroValidacao, erroValidacao } from "./erro-validacao"
 
 export type TipoCaracteristica = "BOOLEANA" | "NUMERICA" | "TEXTO"
+export type OrigemCaracteristica = "IMOVEL" | "CONDOMINIO"
 
 export interface PropsCaracteristica {
   idtFonte: number
@@ -12,6 +13,7 @@ export interface PropsCaracteristica {
   valorBool?: boolean
   valorNum?: number
   valorTexto?: string
+  origem?: OrigemCaracteristica
 }
 
 export class Caracteristica {
@@ -24,6 +26,7 @@ export class Caracteristica {
     readonly valorBool: boolean | undefined,
     readonly valorNum: number | undefined,
     readonly valorTexto: string | undefined,
+    readonly origem: OrigemCaracteristica,
   ) {}
 
   static criar(props: PropsCaracteristica): Result<Caracteristica, ErroValidacao> {
@@ -55,6 +58,7 @@ export class Caracteristica {
         props.tipo === "BOOLEANA" ? props.valorBool : undefined,
         props.tipo === "NUMERICA" ? props.valorNum : undefined,
         props.tipo === "TEXTO" ? texto : undefined,
+        props.origem ?? "IMOVEL",
       ),
     )
   }
