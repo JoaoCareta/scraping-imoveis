@@ -34,6 +34,37 @@ export const imovel3339: MoldSystemsSolrDoc = {
     { desInformation: "terreo ", desInformationFormatted: "terreo ", characteristics: { idtCharacteristics: 160 } },
     { desInformation: "Sim", desInformationFormatted: "Sim", characteristics: { idtCharacteristics: 9999999 } },
   ]),
+  // --- endereço estruturado ---
+  namStreet: "Rua Pará",
+  numNumber: "70",
+  numPostalArea: "16011015",
+  numFloor: "4",
+  desReferencePoint: "ao lado da praça central",
+  latitudeAndLongitude: "-21.2112600000000,-50.4407300000000",
+  namCondominium: "Residencial Madri",
+  // --- apresentação ---
+  desTitleSite: "Apartamento 3 dormitórios no Centro",
+  desInformationSite: "Excelente apartamento reformado, próximo ao comércio.",
+  desObservation: "Aceita financiamento bancário.",
+  // --- mídia ---
+  urlVideo: "https://youtube.com/shorts/abc123",
+  jsonPhotosCondominium: '[{"urlPhoto":"https://s3/cond1.jpg","flgNotShowSite":0}]',
+  // --- condomínio: características (mesmo dicionário; idt 75 Playground, 15 Piscina, 97 Elevador Social qtd) ---
+  jsonCondominiumCharacteristics: JSON.stringify([
+    { desInformation: "Sim", desInformationFormatted: "Sim", characteristics: { idtCharacteristics: 75 } },
+    { desInformation: "Sim", desInformationFormatted: "Sim", characteristics: { idtCharacteristics: 15 } },
+    { desInformation: "1", desInformationFormatted: "1,00", characteristics: { idtCharacteristics: 97 } },
+  ]),
+  // --- extras ---
+  valIptu: 1200,
+  numParcelsIptu: 10,
+  valSumLocationAndCondominium: 1990,
+  numApartment: "402",
+  numBlock: "B",
+  desAddressObservation: "Fundos",
+  flg360: 1,
+  flgHighlight: 1,
+  dtaRegister: "2024-03-18T00:00:00Z",
   dtaUpdate: "2026-05-07T10:22:58Z",
   idtTenant: "516",
 }
