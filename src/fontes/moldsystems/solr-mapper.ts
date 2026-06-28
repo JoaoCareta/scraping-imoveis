@@ -255,7 +255,7 @@ export function extrasDeDoc(doc: MoldSystemsSolrDoc): Record<string, unknown> {
   if (doc.flgHideValSaleSite != null) e["ocultarValorVenda"] = !!doc.flgHideValSaleSite
   if (doc.flgHideValLocationSite != null) e["ocultarValorLocacao"] = !!doc.flgHideValLocationSite
   if (doc.flgHighlight != null) e["destaque"] = !!doc.flgHighlight
-  if (texto(doc.dtaRegister)) e["dtaRegister"] = doc.dtaRegister
+  if (texto(doc.dtaRegister)) e["dtaRegister"] = texto(doc.dtaRegister)
   if (texto(doc.namCondominiumPlant)) e["plantaCondominio"] = texto(doc.namCondominiumPlant)
   if (texto(doc.desAddressObservationCondominium)) e["observacaoEnderecoCondominio"] = texto(doc.desAddressObservationCondominium)
   return e

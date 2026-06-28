@@ -282,6 +282,11 @@ describe("localizacaoDeDoc endereço estruturado", () => {
     expect(l.geo).toBeUndefined()
   })
 
+  it("trata 0,0 como sem geo", () => {
+    const l = localizacaoDeDoc({ ...imovel3339, latitudeAndLongitude: "0,0" })
+    expect(l.geo).toBeUndefined()
+  })
+
   it("sem latitudeAndLongitude → geo undefined", () => {
     const l = localizacaoDeDoc({ ...imovel3339, latitudeAndLongitude: undefined })
     expect(l.geo).toBeUndefined()
