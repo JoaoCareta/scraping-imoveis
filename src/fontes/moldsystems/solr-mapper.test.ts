@@ -326,3 +326,31 @@ describe("características do condomínio", () => {
     expect(c.lista).not.toContain("Playground")
   })
 })
+
+describe("extrasDeDoc — campos novos", () => {
+  it("mapeia iptu anual, custo mensal total, apto/bloco, observações e flags", () => {
+    const e = extrasDeDoc(imovel3339)
+    expect(e.iptuAnual).toBe(1200)
+    expect(e.iptuParcelas).toBe(10)
+    expect(e.custoMensalTotal).toBe(1990)
+    expect(e.numeroApartamento).toBe("402")
+    expect(e.bloco).toBe("B")
+    expect(e.observacao).toBe("Aceita financiamento bancário.")
+    expect(e.observacaoEndereco).toBe("Fundos")
+    expect(e.tem360).toBe(true)
+    expect(e.destaque).toBe(true)
+    expect(e.dtaRegister).toBe("2024-03-18T00:00:00Z")
+  })
+})
+
+describe("hashDeDoc inclui características do condomínio", () => {
+  it("muda quando jsonCondominiumCharacteristics muda", () => {
+    const CTX3 = { clienteId: "innove", origin: "https://imobiliariainnove.com.br", extraidoEm: "2026-06-28T12:00:00.000Z" }
+    const base = imoveisDeSolrDoc(imovel3339, CTX3).find((x) => x.ok)
+    const alterado = imoveisDeSolrDoc({ ...imovel3339, jsonCondominiumCharacteristics: "[]" }, CTX3).find((x) => x.ok)
+    expect(base?.ok && alterado?.ok).toBe(true)
+    if (base?.ok && alterado?.ok) {
+      expect(base.value.estado.hashConteudo).not.toBe(alterado.value.estado.hashConteudo)
+    }
+  })
+})

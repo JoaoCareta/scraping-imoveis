@@ -241,6 +241,23 @@ export function extrasDeDoc(doc: MoldSystemsSolrDoc): Record<string, unknown> {
   if (doc.idtTenant != null) e["idtTenant"] = doc.idtTenant
   if (doc.namState != null) e["estadoNome"] = doc.namState
   if (doc.indStatus != null) e["indStatus"] = doc.indStatus
+  if (doc.valIptu != null) e["iptuAnual"] = doc.valIptu
+  if (doc.numParcelsIptu != null) e["iptuParcelas"] = doc.numParcelsIptu
+  if (doc.valSumLocationAndCondominium != null) e["custoMensalTotal"] = doc.valSumLocationAndCondominium
+  if (doc.numApartment != null) e["numeroApartamento"] = String(doc.numApartment)
+  if (doc.numBlock != null) e["bloco"] = String(doc.numBlock)
+  if (doc.numLandBlock != null) e["quadra"] = String(doc.numLandBlock)
+  if (doc.numLandLot != null) e["lote"] = String(doc.numLandLot)
+  if (texto(doc.desAddressObservation)) e["observacaoEndereco"] = texto(doc.desAddressObservation)
+  if (texto(doc.desObservation)) e["observacao"] = texto(doc.desObservation)
+  if (texto(doc.desBranchActivity)) e["ramoAtividade"] = texto(doc.desBranchActivity)
+  if (doc.flg360 != null) e["tem360"] = !!doc.flg360
+  if (doc.flgHideValSaleSite != null) e["ocultarValorVenda"] = !!doc.flgHideValSaleSite
+  if (doc.flgHideValLocationSite != null) e["ocultarValorLocacao"] = !!doc.flgHideValLocationSite
+  if (doc.flgHighlight != null) e["destaque"] = !!doc.flgHighlight
+  if (texto(doc.dtaRegister)) e["dtaRegister"] = doc.dtaRegister
+  if (texto(doc.namCondominiumPlant)) e["plantaCondominio"] = texto(doc.namCondominiumPlant)
+  if (texto(doc.desAddressObservationCondominium)) e["observacaoEnderecoCondominio"] = texto(doc.desAddressObservationCondominium)
   return e
 }
 
@@ -251,6 +268,9 @@ function hashDeDoc(doc: MoldSystemsSolrDoc): string {
     doc.totalRooms, doc.totalGarages, doc.namCategory, doc.namSubCategory,
     doc.namDistrict, doc.namCity, doc.namState, doc.flgShowSite, doc.indBusy,
     doc.indStatus, doc.dtaUpdate, doc.jsonCharacteristics,
+    doc.jsonCondominiumCharacteristics, doc.namStreet, doc.numNumber, doc.numPostalArea,
+    doc.numFloor, doc.latitudeAndLongitude, doc.namCondominium, doc.desTitleSite,
+    doc.desInformationSite, doc.urlVideo, doc.desObservation,
   ].map((v) => String(v ?? "")).join("|")
 }
 
