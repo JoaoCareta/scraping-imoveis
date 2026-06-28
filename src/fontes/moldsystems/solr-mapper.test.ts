@@ -287,3 +287,21 @@ describe("localizacaoDeDoc endereço estruturado", () => {
     expect(l.geo).toBeUndefined()
   })
 })
+
+describe("apresentação e mídia", () => {
+  it("caracteristicasDeDoc traz titulo e descricao", () => {
+    const c = caracteristicasDeDoc(imovel3339)
+    expect(c.titulo).toBe("Apartamento 3 dormitórios no Centro")
+    expect(c.descricao).toBe("Excelente apartamento reformado, próximo ao comércio.")
+  })
+
+  it("imoveisDeSolrDoc preenche media.video e media.fotosCondominio", () => {
+    const CTX2 = { clienteId: "innove", origin: "https://imobiliariainnove.com.br", extraidoEm: "2026-06-28T12:00:00.000Z" }
+    const r = imoveisDeSolrDoc(imovel3339, CTX2).find((x) => x.ok)
+    expect(r?.ok).toBe(true)
+    if (r && r.ok) {
+      expect(r.value.media.video).toBe("https://youtube.com/shorts/abc123")
+      expect(r.value.media.fotosCondominio).toEqual(["https://s3/cond1.jpg"])
+    }
+  })
+})

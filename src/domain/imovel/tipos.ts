@@ -6,12 +6,16 @@ export interface Caracteristicas {
   readonly areaM2?: number
   readonly quartos?: number
   readonly casasBanho?: number
+  readonly titulo?: string
+  readonly descricao?: string
   readonly lista: readonly string[]
   readonly itens: readonly Caracteristica[]
 }
 
 export interface Media {
   readonly fotoPrincipal?: string
+  readonly video?: string
+  readonly fotosCondominio?: readonly string[]
 }
 
 export interface EstadoExtracao {

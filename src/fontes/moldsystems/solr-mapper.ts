@@ -17,6 +17,11 @@ export interface OperacaoPreco {
   periodo: PeriodoPreco
 }
 
+function texto(v?: string): string | undefined {
+  const t = (v ?? "").trim()
+  return t.length === 0 ? undefined : t
+}
+
 function lerChars(doc: MoldSystemsSolrDoc): MoldSystemsChar[] {
   try {
     return JSON.parse(doc.jsonCharacteristics ?? "[]") as MoldSystemsChar[]
@@ -147,6 +152,8 @@ export function caracteristicasDeDoc(doc: MoldSystemsSolrDoc): Caracteristicas {
     areaM2: areaDeDoc(doc),
     quartos: typeof doc.totalRooms === "number" ? doc.totalRooms : undefined,
     casasBanho: banheirosDeDoc(doc),
+    titulo: texto(doc.desTitleSite),
+    descricao: texto(doc.desInformationSite),
     lista,
     itens,
   }
@@ -193,6 +200,16 @@ export function fotoPrincipalDeDoc(doc: MoldSystemsSolrDoc): string | undefined 
   }
 }
 
+export function fotosCondominioDeDoc(doc: MoldSystemsSolrDoc): string[] | undefined {
+  try {
+    const fotos = JSON.parse(doc.jsonPhotosCondominium ?? "[]") as MoldSystemsFoto[]
+    const urls = fotos.filter((f) => f.urlPhoto && !f.flgNotShowSite).map((f) => f.urlPhoto)
+    return urls.length > 0 ? urls : undefined
+  } catch {
+    return undefined
+  }
+}
+
 // Fix 7 — harden indBusy: any non-zero number counts as ocupado
 export function ativoDeDoc(doc: MoldSystemsSolrDoc): boolean {
   const mostra = doc.flgShowSite !== false
@@ -229,7 +246,7 @@ export function imoveisDeSolrDoc(
   const operacoes = finalidadesDeDoc(doc)
   const localizacao = localizacaoDeDoc(doc)
   const caracteristicas = caracteristicasDeDoc(doc)
-  const media = { fotoPrincipal: fotoPrincipalDeDoc(doc) }
+  const media = { fotoPrincipal: fotoPrincipalDeDoc(doc), video: texto(doc.urlVideo), fotosCondominio: fotosCondominioDeDoc(doc) }
   const extras = extrasDeDoc(doc)
   const ativo = ativoDeDoc(doc)
   const ref = String(doc.idtProperty)
