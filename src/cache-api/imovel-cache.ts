@@ -43,7 +43,9 @@ function semFiltro(valor?: string): string | null {
 
 function comodidadesFiltro(valores?: string[]): string | null {
   if (!valores) return null
-  const limpas = valores.map((v) => (v ?? "").trim()).filter((v) => v.length > 0 && !ehSemPreferencia(v))
+  // Slugs guardados são minúsculos; minusculizar o input dá paridade com a scraper-api
+  // (case-insensitive) — ex.: "Piscina" casa com o slug "piscina".
+  const limpas = valores.map((v) => (v ?? "").trim().toLowerCase()).filter((v) => v.length > 0 && !ehSemPreferencia(v))
   return limpas.length === 0 ? null : JSON.stringify(limpas)
 }
 

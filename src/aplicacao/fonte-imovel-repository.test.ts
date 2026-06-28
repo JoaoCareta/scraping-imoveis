@@ -127,4 +127,10 @@ describe("FonteImovelRepository", () => {
     expect((await repo.buscar({ comodidades: [] })).total).toBe(1)
     expect((await repo.buscar({ comodidades: ["qualquer"] })).total).toBe(1)
   })
+
+  it("comodidades é case-insensitive (caixa mista casa o slug minúsculo)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
+    const c = await repo.buscar({ comodidades: ["Piscina", "SACADA"] })
+    expect(c.total).toBe(1)
+  })
 })

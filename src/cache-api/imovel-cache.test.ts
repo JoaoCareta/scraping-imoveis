@@ -51,6 +51,16 @@ describe("imovel-cache", () => {
     expect(capturado[8]).toBe(10)
   })
 
+  it("buscarNoCache minusculiza comodidades (paridade case-insensitive com a scraper-api)", async () => {
+    let capturado: unknown[] = []
+    const consulta: Consulta = async (_sql, params) => {
+      capturado = params
+      return { rows: [] }
+    }
+    await buscarNoCache(consulta, { comodidades: ["Piscina", "PORTARIA"], limit: 10 })
+    expect(capturado[7]).toBe(JSON.stringify(["piscina", "portaria"]))
+  })
+
   it("buscarNoCache ignora comodidades vazias ou coringas (NULL)", async () => {
     let capturado: unknown[] = []
     const consulta: Consulta = async (_sql, params) => {
