@@ -70,9 +70,33 @@ function tipoSingular(cat?: string): string | undefined {
   return mapa[s] ?? s
 }
 
+function parsearGeo(s?: string): { lat: number; lng: number } | undefined {
+  if (!s) return undefined
+  const [a, b] = s.split(",")
+  const lat = Number.parseFloat(a)
+  const lng = Number.parseFloat(b)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined
+  // Sentinela "0E-13" (BigDecimal zero) = imóvel não geocodificado.
+  if (Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6) return undefined
+  return { lat, lng }
+}
+
 export function localizacaoDeDoc(doc: MoldSystemsSolrDoc): PropsLocalizacao {
   const zonaTexto = doc.namDistrict || doc.namCity || doc.fullAddress || ""
-  return { zonaTexto, bairro: doc.namDistrict, cidade: doc.namCity, estado: doc.namState }
+  const andarNum = doc.numFloor != null ? Number.parseInt(String(doc.numFloor), 10) : NaN
+  return {
+    zonaTexto,
+    bairro: doc.namDistrict,
+    cidade: doc.namCity,
+    estado: doc.namState,
+    rua: doc.namStreet,
+    numero: doc.numNumber != null ? String(doc.numNumber) : undefined,
+    cep: doc.numPostalArea != null ? String(doc.numPostalArea) : undefined,
+    andar: Number.isFinite(andarNum) ? andarNum : undefined,
+    pontoReferencia: doc.desReferencePoint,
+    condominio: doc.namCondominium,
+    geo: parsearGeo(doc.latitudeAndLongitude),
+  }
 }
 
 function ehSim(v: string): boolean {

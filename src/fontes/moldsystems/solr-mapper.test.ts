@@ -264,3 +264,26 @@ describe("caracteristicasItensDeDoc", () => {
     expect(c.lista).not.toContain("Portaria 24 Hrs")
   })
 })
+
+describe("localizacaoDeDoc endereço estruturado", () => {
+  it("mapeia rua, numero, cep, andar, ponto de referência, condomínio e geo", () => {
+    const l = localizacaoDeDoc(imovel3339)
+    expect(l.rua).toBe("Rua Pará")
+    expect(l.numero).toBe("70")
+    expect(l.cep).toBe("16011015")
+    expect(l.andar).toBe(4)
+    expect(l.pontoReferencia).toBe("ao lado da praça central")
+    expect(l.condominio).toBe("Residencial Madri")
+    expect(l.geo).toEqual({ lat: -21.21126, lng: -50.44073 })
+  })
+
+  it("trata o sentinela 0E-13 como sem geo", () => {
+    const l = localizacaoDeDoc({ ...imovel3339, latitudeAndLongitude: "0E-13,0E-13" })
+    expect(l.geo).toBeUndefined()
+  })
+
+  it("sem latitudeAndLongitude → geo undefined", () => {
+    const l = localizacaoDeDoc({ ...imovel3339, latitudeAndLongitude: undefined })
+    expect(l.geo).toBeUndefined()
+  })
+})
