@@ -6,6 +6,7 @@ describe("construirApp", () => {
     const app = construirApp({
       port: 3000, host: "0.0.0.0", clienteId: "innove", origin: "https://x",
       solrNumRows: 5000, fetchTimeoutMs: 8000, logLevel: "silent",
+      plataforma: "moldsystems", estrategia: "html",
     })
     const res = await app.inject({ method: "GET", url: "/health" })
     expect(res.statusCode).toBe(200)

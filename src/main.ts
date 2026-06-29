@@ -1,17 +1,11 @@
 import { FastifyInstance } from "fastify"
 import { carregarConfig, Config } from "./config"
-import { MoldSystemsFonte } from "./fontes/moldsystems/moldsystems-fonte"
+import { criarFonte } from "./fontes/fabrica"
 import { FonteImovelRepository } from "./aplicacao/fonte-imovel-repository"
 import { criarServidor } from "./api/server"
 
 export function construirApp(config: Config): FastifyInstance {
-  const fonte = new MoldSystemsFonte({
-    origin: config.origin,
-    clienteId: config.clienteId,
-    numRows: config.solrNumRows,
-    timeoutMs: config.fetchTimeoutMs,
-    avisar: (msg) => console.warn(msg),
-  })
+  const fonte = criarFonte(config)
   const repo = new FonteImovelRepository({ fonte })
   return criarServidor(repo, config)
 }

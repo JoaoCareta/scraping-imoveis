@@ -7,6 +7,8 @@ export interface Config {
   fetchTimeoutMs: number
   logLevel: string
   apiKey?: string
+  plataforma: "moldsystems" | "kenlo"
+  estrategia: "html" | "api"
 }
 
 type Env = Record<string, string | undefined>
@@ -27,5 +29,7 @@ export function carregarConfig(env: Env): Config {
     fetchTimeoutMs: numero(env.FETCH_TIMEOUT_MS, 8000),
     logLevel: env.LOG_LEVEL ?? "info",
     apiKey: apiKey ? apiKey : undefined,
+    plataforma: env.PLATAFORMA === "kenlo" ? "kenlo" : "moldsystems",
+    estrategia: env.ESTRATEGIA === "api" ? "api" : "html",
   }
 }

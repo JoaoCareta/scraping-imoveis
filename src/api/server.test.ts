@@ -7,6 +7,7 @@ import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
 const CONFIG_BASE: Config = {
   port: 3000, host: "0.0.0.0", clienteId: "innove",
   origin: "https://x", solrNumRows: 5000, fetchTimeoutMs: 8000, logLevel: "silent",
+  plataforma: "moldsystems", estrategia: "html",
 }
 
 function recurso(ref: string, finalidade: "ALUGUER" | "VENDA"): Coleta["imoveis"][number] {
@@ -123,6 +124,26 @@ describe("servidor", () => {
     expect(body.limit).toBe(2)
     expect(body.offset).toBe(1)
     expect(body.imoveis.map((i: { ref: string }) => i.ref)).toEqual(["2", "3"])
+  })
+
+  it("GET /imoveis?cliente=innove (cliente desta instância) → 200", async () => {
+    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().evento).toBe("ColetaConcluida")
+  })
+
+  it("GET /imoveis?cliente=caires (instância só atende innove) → 409, sem vazar dados", async () => {
+    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires" })
+    expect(res.statusCode).toBe(409)
+    expect(res.json().erro.codigo).toBe("CLIENTE_NAO_ATENDIDO")
+  })
+
+  it("GET /imoveis/:ref?cliente=caires (instância só atende innove) → 409", async () => {
+    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis/1910?cliente=caires" })
+    expect(res.statusCode).toBe(409)
   })
 
   it("ignora query params vazios em vez de dar 400", async () => {

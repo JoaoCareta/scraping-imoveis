@@ -24,4 +24,11 @@ describe("carregarConfig", () => {
     const c = carregarConfig({ API_KEY: "" })
     expect(c.apiKey).toBeUndefined()
   })
+
+  it("plataforma e estrategia: defaults e override por env", () => {
+    expect(carregarConfig({}).plataforma).toBe("moldsystems")
+    expect(carregarConfig({}).estrategia).toBe("html")
+    expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).plataforma).toBe("kenlo")
+    expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).estrategia).toBe("api")
+  })
 })
