@@ -31,13 +31,14 @@ describe("imovel-cache", () => {
     // Run Test
     await buscarNoCache(consulta, f)
 
-    // Assert — ordem: finalidade, tipoImovel, quartos, precoMin, precoMax, cidade, bairro, comodidades, limit
+    // Assert — ordem: finalidade, tipoImovel, quartos, precoMin, precoMax, cidade, bairro, comodidades, condominio, limit
     expect(capturado[0]).toBe("ALUGUER")
     expect(capturado[1]).toBe("casa")
     expect(capturado[5]).toBeNull()
     expect(capturado[6]).toBeNull()
     expect(capturado[7]).toBeNull()   // comodidades (ausente → NULL)
-    expect(capturado[8]).toBe(10)     // limit
+    expect(capturado[8]).toBeNull()   // condominio (ausente → NULL)
+    expect(capturado[9]).toBe(10)     // limit
   })
 
   it("buscarNoCache aplica comodidades como JSONB containment", async () => {
@@ -48,7 +49,28 @@ describe("imovel-cache", () => {
     }
     await buscarNoCache(consulta, { comodidades: ["elevador", "sacada"], limit: 10 })
     expect(capturado[7]).toBe(JSON.stringify(["elevador", "sacada"]))
-    expect(capturado[8]).toBe(10)
+    expect(capturado[9]).toBe(10)
+  })
+
+  it("buscarNoCache limpa o termo de condomínio (remove genéricos, normaliza)", async () => {
+    let capturado: unknown[] = []
+    const consulta: Consulta = async (_sql, params) => {
+      capturado = params
+      return { rows: [] }
+    }
+    await buscarNoCache(consulta, { condominio: "Residencial Elev", limit: 10 })
+    expect(capturado[8]).toBe("elev") // "residencial" removido, normalizado
+    expect(capturado[9]).toBe(10)
+  })
+
+  it("buscarNoCache ignora condomínio vazio/coringa (NULL)", async () => {
+    let capturado: unknown[] = []
+    const consulta: Consulta = async (_sql, params) => {
+      capturado = params
+      return { rows: [] }
+    }
+    await buscarNoCache(consulta, { condominio: "qualquer", limit: 10 })
+    expect(capturado[8]).toBeNull()
   })
 
   it("buscarNoCache minusculiza comodidades (paridade case-insensitive com a scraper-api)", async () => {

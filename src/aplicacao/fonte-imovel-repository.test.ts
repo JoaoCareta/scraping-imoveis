@@ -16,6 +16,10 @@ function imoveisDeDocs(docs: MoldSystemsSolrDoc[]): Imovel[] {
 
 const docAluguel = imovel1910
 const docVendaEAluguel = { ...imovel1910, idtProperty: 2001, totalRooms: 3, namDistrict: "Centro", namCity: "Bauru", valLocation: 1500, valSales: 300000 }
+// Condomínio: estruturado (Elev), só-descrição (Ataville) e um com "elevador" no texto (não é condo Elev)
+const docCondElev = { ...imovel1910, idtProperty: 7001, namCondominium: "Condomínio Elev" }
+const docElevador = { ...imovel1910, idtProperty: 7002, desInformationSite: "Apartamento com elevador e piscina" }
+const docAtaville = { ...imovel1910, idtProperty: 7003, desInformationSite: "Apartamento no Residencial Ataville, Araçatuba" }
 
 function fonteFake(imoveis: Imovel[], rejeitados = 0): FonteDeImoveis {
   const r: ResultadoExtracao = {
@@ -132,5 +136,28 @@ describe("FonteImovelRepository", () => {
     const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([imovel3339])) })
     const c = await repo.buscar({ comodidades: ["Piscina", "SACADA"] })
     expect(c.total).toBe(1)
+  })
+
+  it("filtra por condomínio (campo estruturado, palavra inteira)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docCondElev, docElevador])) })
+    const c = await repo.buscar({ condominio: "elev" })
+    expect(c.total).toBe(1)
+    expect(c.imoveis[0].ref).toBe("7001")
+  })
+
+  it("NÃO confunde condomínio 'elev' com 'elevador' na descrição", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docElevador])) })
+    expect((await repo.buscar({ condominio: "elev" })).total).toBe(0)
+  })
+
+  it("acha condomínio que só existe na descrição (e remove genéricos do termo)", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docAtaville])) })
+    expect((await repo.buscar({ condominio: "ataville" })).total).toBe(1)
+    expect((await repo.buscar({ condominio: "Residencial Ataville" })).total).toBe(1)
+  })
+
+  it("condomínio vazio/coringa = sem filtro", async () => {
+    const repo = new FonteImovelRepository({ fonte: fonteFake(imoveisDeDocs([docCondElev])) })
+    expect((await repo.buscar({ condominio: "qualquer" })).total).toBe(1)
   })
 })

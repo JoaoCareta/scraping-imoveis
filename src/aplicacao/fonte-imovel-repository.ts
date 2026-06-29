@@ -2,6 +2,7 @@ import { FonteDeImoveis } from "../fontes/fonte-de-imoveis"
 import { imovelParaRecurso, RecursoImovel } from "../domain/leitura/recurso-imovel"
 import { Coleta, FiltrosImovel, ImovelRepository } from "./imovel-repository"
 import { ehSemPreferencia } from "./sem-preferencia"
+import { limparTermoCondominio, textoCondominio, casaCondominio } from "../shared/condominio-busca"
 
 export interface FonteImovelRepositoryDeps {
   fonte: FonteDeImoveis
@@ -61,6 +62,21 @@ export class FonteImovelRepository implements ImovelRepository {
     const passaComodidades =
       querComodidades.length === 0 || querComodidades.every((c) => r.caracteristicas.comodidades.includes(c))
 
+    // condomínio: casa o termo (palavra inteira) no texto combinado (nome + título +
+    // descrição + url). Coringas/vazios = sem filtro.
+    const termoCond = ehSemPreferencia(f.condominio ?? "") ? null : limparTermoCondominio(f.condominio)
+    const passaCondominio =
+      termoCond == null ||
+      casaCondominio(
+        textoCondominio({
+          condominio: r.localizacao.condominio,
+          titulo: r.caracteristicas.titulo,
+          descricao: r.caracteristicas.descricao,
+          urlSite: r.urlSite,
+        }),
+        termoCond,
+      )
+
     return (
       passaAtivo &&
       passaFinalidade &&
@@ -70,7 +86,8 @@ export class FonteImovelRepository implements ImovelRepository {
       passaCidade &&
       passaBairro &&
       passaTipo &&
-      passaComodidades
+      passaComodidades &&
+      passaCondominio
     )
   }
 }

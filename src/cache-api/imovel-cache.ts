@@ -1,5 +1,6 @@
 import { RecursoImovel } from "../domain/leitura/recurso-imovel"
 import { ehSemPreferencia } from "../aplicacao/sem-preferencia"
+import { limparTermoCondominio, escaparRegex } from "../shared/condominio-busca"
 
 /** Filtros aceites pela busca no cache (mesma convenção da API do scraper). */
 export interface FiltrosCache {
@@ -11,6 +12,7 @@ export interface FiltrosCache {
   cidade?: string
   bairro?: string
   comodidades?: string[]
+  condominio?: string
   limit: number
 }
 
@@ -31,9 +33,14 @@ WHERE ($1::text IS NULL OR finalidade = $1)
   AND ($6::text IS NULL OR unaccent(lower(cidade)) = unaccent(lower($6)))
   AND ($7::text IS NULL OR unaccent(lower(bairro)) = unaccent(lower($7)))
   AND ($8::jsonb IS NULL OR payload->'caracteristicas'->'comodidades' @> $8::jsonb)
+  AND ($9::text IS NULL OR unaccent(lower(concat_ws(' ',
+        payload->'localizacao'->>'condominio',
+        payload->'caracteristicas'->>'titulo',
+        payload->'caracteristicas'->>'descricao',
+        payload->>'urlSite'))) ~ ('\\m' || $9 || '\\M'))
   AND ativo = true
 ORDER BY preco ASC NULLS LAST
-LIMIT $9`
+LIMIT $10`
 
 /** Coringas ("qualquer", "tanto faz", ...) e vazios viram NULL = sem filtro. */
 function semFiltro(valor?: string): string | null {
@@ -47,6 +54,13 @@ function comodidadesFiltro(valores?: string[]): string | null {
   // (case-insensitive) — ex.: "Piscina" casa com o slug "piscina".
   const limpas = valores.map((v) => (v ?? "").trim().toLowerCase()).filter((v) => v.length > 0 && !ehSemPreferencia(v))
   return limpas.length === 0 ? null : JSON.stringify(limpas)
+}
+
+/** Termo de condomínio limpo (sem genéricos) e escapado para o regex do Postgres. */
+function condominioFiltro(valor?: string): string | null {
+  if (valor == null || ehSemPreferencia(valor)) return null
+  const limpo = limparTermoCondominio(valor)
+  return limpo == null ? null : escaparRegex(limpo)
 }
 
 export async function contarCache(consulta: Consulta): Promise<number> {
@@ -68,6 +82,7 @@ export async function buscarNoCache(
     semFiltro(f.cidade),
     semFiltro(f.bairro),
     comodidadesFiltro(f.comodidades),
+    condominioFiltro(f.condominio),
     f.limit,
   ]
   const r = await consulta(SQL_BUSCA, params)

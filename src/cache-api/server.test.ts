@@ -102,4 +102,20 @@ describe("cache-api server", () => {
     expect(res.statusCode).toBe(200)
     expect(filtrosRecebidos?.comodidades).toEqual(["elevador", "sacada"])
   })
+
+  it("repassa condominio para a busca", async () => {
+    let filtrosRecebidos: FiltrosCache | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async () => 5,
+        buscar: async (f) => {
+          filtrosRecebidos = f as FiltrosCache
+          return []
+        },
+      }),
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?condominio=Vila%20Madalena" })
+    expect(res.statusCode).toBe(200)
+    expect(filtrosRecebidos?.condominio).toBe("Vila Madalena")
+  })
 })

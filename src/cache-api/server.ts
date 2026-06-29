@@ -21,6 +21,7 @@ interface QueryImoveis {
   bairro?: string
   limit?: string
   comodidades?: string
+  condominio?: string
 }
 
 function numero(valor?: string): number | undefined {
@@ -61,6 +62,7 @@ export function criarCacheServer(deps: CacheServerDeps): FastifyInstance {
           cidade: q.cidade,
           bairro: q.bairro,
           comodidades: lista(q.comodidades),
+          condominio: q.condominio,
           limit: numero(q.limit) ?? 10,
         }
         const imoveis = await deps.buscar(filtros)

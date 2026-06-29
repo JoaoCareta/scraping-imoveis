@@ -10,6 +10,7 @@ export interface FiltrosImovel {
   tipoImovel?: string
   ativo?: boolean
   comodidades?: string[]
+  condominio?: string
 }
 
 /** Resultado de "ColetarImoveis" (envelope ColetaConcluida). */

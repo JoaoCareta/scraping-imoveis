@@ -48,6 +48,17 @@ describe("servidor", () => {
     expect(recebido?.comodidades).toEqual(["piscina", "portaria"])
   })
 
+  it("GET /imoveis?condominio=Residencial Elev → repassa o termo ao repo", async () => {
+    let recebido: FiltrosImovel | undefined
+    const app = criarServidor(
+      repoFake({ buscar: async (f) => { recebido = f; return { imoveis: [], total: 0, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" } } }),
+      CONFIG_BASE,
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?condominio=Residencial%20Elev" })
+    expect(res.statusCode).toBe(200)
+    expect(recebido?.condominio).toBe("Residencial Elev")
+  })
+
   it("GET /imoveis → 200 envelope ColetaConcluida", async () => {
     const app = criarServidor(repoFake(), CONFIG_BASE)
     const res = await app.inject({ method: "GET", url: "/imoveis" })

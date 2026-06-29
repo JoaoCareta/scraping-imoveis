@@ -14,6 +14,7 @@ interface QueryImoveis {
   tipoImovel?: string
   ativo?: boolean
   comodidades?: string
+  condominio?: string
   limit?: number
   offset?: number
 }
@@ -39,6 +40,7 @@ const SCHEMA_IMOVEIS = {
       tipoImovel: { type: "string" },
       ativo: { type: "boolean" },
       comodidades: { type: "string" },
+      condominio: { type: "string" },
       limit: { type: "integer", minimum: 1, maximum: 500, default: 100 },
       offset: { type: "integer", minimum: 0, default: 0 },
     },
@@ -119,6 +121,7 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
         tipoImovel: q.tipoImovel,
         ativo: q.ativo,
         comodidades: lista(q.comodidades),
+        condominio: q.condominio,
       }
       const coleta = await repo.buscar(filtros)
       // total = nº de imóveis que casam os filtros (antes da paginação); imoveis = a página.
