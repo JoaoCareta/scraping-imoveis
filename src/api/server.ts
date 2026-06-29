@@ -5,6 +5,7 @@ import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
 import { ehSemPreferencia } from "../aplicacao/sem-preferencia"
 
 interface QueryImoveis {
+  cliente?: string
   finalidade?: "ALUGUER" | "VENDA"
   precoMin?: number
   precoMax?: number
@@ -31,6 +32,7 @@ const SCHEMA_IMOVEIS = {
     type: "object",
     additionalProperties: false,
     properties: {
+      cliente: { type: "string" },
       finalidade: { type: "string", enum: ["ALUGUER", "VENDA"] },
       precoMin: { type: "number", minimum: 0 },
       precoMax: { type: "number", minimum: 0 },
@@ -104,11 +106,32 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     uptimeMs: Math.round(process.uptime() * 1000),
   }))
 
+  // Esta instância só atende o cliente configurado (config.clienteId). Um ?cliente=
+  // diferente é recusado — nunca devolver o catálogo de outro cliente. Quando o
+  // roteamento por registry/origin entrar, esta verificação dá lugar à seleção da fonte.
+  function recusaClienteIncompativel(
+    cliente: string | undefined,
+    reply: import("fastify").FastifyReply,
+  ): boolean {
+    if (cliente && cliente !== config.clienteId) {
+      reply.code(409).send({
+        evento: "ClienteNaoAtendido",
+        erro: {
+          codigo: "CLIENTE_NAO_ATENDIDO",
+          mensagem: `Esta instância atende o cliente '${config.clienteId}', não '${cliente}'.`,
+        },
+      })
+      return true
+    }
+    return false
+  }
+
   app.get<{ Querystring: QueryImoveis }>(
     "/imoveis",
     { schema: SCHEMA_IMOVEIS },
-    async (req: FastifyRequest<{ Querystring: QueryImoveis }>) => {
+    async (req: FastifyRequest<{ Querystring: QueryImoveis }>, reply) => {
       const q = req.query
+      if (recusaClienteIncompativel(q.cliente, reply)) return reply
       const limit = q.limit ?? 100
       const offset = q.offset ?? 0
       const filtros: FiltrosImovel = {
@@ -137,7 +160,8 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     },
   )
 
-  app.get<{ Params: { ref: string } }>("/imoveis/:ref", async (req, reply) => {
+  app.get<{ Params: { ref: string }; Querystring: { cliente?: string } }>("/imoveis/:ref", async (req, reply) => {
+    if (recusaClienteIncompativel(req.query.cliente, reply)) return reply
     const coleta = await repo.buscarPorRef(req.params.ref)
     if (coleta.total === 0) {
       return reply.code(404).send({
