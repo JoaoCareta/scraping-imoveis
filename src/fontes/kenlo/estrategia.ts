@@ -1,3 +1,5 @@
+import { ResultadoExtracao } from "../fonte-de-imoveis"
+
 export interface KenloContexto {
   clienteId: string
   origin: string
@@ -8,4 +10,8 @@ export interface KenloContexto {
 export interface DicaListagem {
   finalidade: "ALUGUER" | "VENDA"
   tipoImovel?: string
+}
+
+export interface EstrategiaColetaKenlo {
+  coletar(ctx: KenloContexto): Promise<ResultadoExtracao>
 }
