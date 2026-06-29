@@ -32,4 +32,9 @@ describe("imovelDeHtmlDetalhe", () => {
       expect(r.value.preco?.valor).toBe(100000)
     }
   })
+
+  it("HTML inválido/sem dados não lança — devolve um Result", () => {
+    const r = imovelDeHtmlDetalhe("<html><body>lixo</body></html>", URL_AP1048, { finalidade: "VENDA" }, ctx)
+    expect(typeof r.ok).toBe("boolean") // não lança; provavelmente um reject de Imovel.criar
+  })
 })

@@ -7,13 +7,32 @@ import { Caracteristica } from "../../domain/imovel/caracteristica"
 import { parsearAreaM2 } from "../../normalizadores/area"
 import { parsearInteiro } from "../../normalizadores/inteiro"
 import { caracteristicaBooleanaDeRotulo } from "./caracteristicas-grupos"
-import { KenloContexto } from "./estrategia"
+import { KenloContexto, DicaListagem } from "./estrategia"
 
-/** Dica vinda da listagem de onde a URL de detalhe foi colhida. */
-export interface DicaListagem {
-  finalidade: "ALUGUER" | "VENDA"
-  tipoImovel?: string
+export type { DicaListagem } from "./estrategia"
+
+// Formas mínimas do JSON-LD que efetivamente lemos (boundary tipado).
+interface OfferLd {
+  price?: string | number
 }
+interface ProductLd {
+  sku?: string
+  description?: string
+  image?: string
+  offers?: OfferLd | OfferLd[]
+}
+interface BreadcrumbItemLd {
+  position?: number
+  name?: string
+  item?: { name?: string }
+}
+interface BreadcrumbLd {
+  itemListElement?: BreadcrumbItemLd[]
+}
+
+// breadcrumb: Home/Imóveis/finalidade/tipo/CIDADE/BAIRRO/ref — ver ACHADOS.md
+const POS_CIDADE = 5
+const POS_BAIRRO = 6
 
 function refDePath(url: string): string {
   try {
@@ -40,11 +59,11 @@ function blocosJsonLd($: CheerioAPI): Record<string, unknown>[] {
   return out
 }
 
-function porTipo(blocos: Record<string, unknown>[], tipo: string): any | undefined {
+function porTipo<T>(blocos: Record<string, unknown>[], tipo: string): T | undefined {
   return blocos.find((b) => {
     const t = (b as any)["@type"]
     return t === tipo || (Array.isArray(t) && t.includes(tipo))
-  })
+  }) as T | undefined
 }
 
 /** Valor do par "item-info": <span class=item-info-title>LABEL</span><span class=item-info-value>V</span>. */
@@ -67,7 +86,7 @@ export function imovelDeHtmlDetalhe(
 ): Result<Imovel, ErroValidacao[]> {
   const $ = cheerio.load(html)
   const blocos = blocosJsonLd($)
-  const product = porTipo(blocos, "Product")
+  const product = porTipo<ProductLd>(blocos, "Product")
 
   // ref: link canonical (último segmento), fallback Product.sku ou a própria url.
   const canonical = $('link[rel="canonical"]').attr("href")
@@ -109,15 +128,15 @@ export function imovelDeHtmlDetalhe(
 
   // localização (breadcrumb JSON-LD pos5 cidade / pos6 bairro) + título.
   const titulo = ($("h1 span").first().text().trim() || $("h1").first().text().trim()) || undefined
-  const bc = porTipo(blocos, "BreadcrumbList")
-  const itensBc: any[] = Array.isArray(bc?.itemListElement) ? bc.itemListElement : []
+  const bc = porTipo<BreadcrumbLd>(blocos, "BreadcrumbList")
+  const itensBc: BreadcrumbItemLd[] = Array.isArray(bc?.itemListElement) ? bc.itemListElement : []
   const nomeBc = (pos: number): string | undefined => {
     const it = itensBc.find((i) => i?.position === pos) ?? itensBc[pos - 1]
     const nome = it?.item?.name ?? it?.name
     return typeof nome === "string" && nome.trim() ? nome.trim() : undefined
   }
-  const cidade = nomeBc(5)
-  const bairro = nomeBc(6)
+  const cidade = nomeBc(POS_CIDADE)
+  const bairro = nomeBc(POS_BAIRRO)
   const descricao = (typeof product?.description === "string" ? product.description : $("div.box-description span").first().text()).trim() || undefined
   const fotoPrincipal = $('img[src*="img.kenlo.io"]').first().attr("src") ?? (typeof product?.image === "string" ? product.image : undefined)
 
