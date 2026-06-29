@@ -9,6 +9,8 @@ export interface Config {
   apiKey?: string
   plataforma: "moldsystems" | "kenlo"
   estrategia: "html" | "api"
+  /** (kenlo) CSV de paths de listagem para escopar o crawl; vazio = catálogo inteiro. */
+  kenloSeeds?: string
 }
 
 type Env = Record<string, string | undefined>
@@ -31,5 +33,6 @@ export function carregarConfig(env: Env): Config {
     apiKey: apiKey ? apiKey : undefined,
     plataforma: env.PLATAFORMA === "kenlo" ? "kenlo" : "moldsystems",
     estrategia: env.ESTRATEGIA === "api" ? "api" : "html",
+    kenloSeeds: env.KENLO_SEEDS?.trim() || undefined,
   }
 }

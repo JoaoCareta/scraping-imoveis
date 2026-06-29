@@ -31,4 +31,10 @@ describe("carregarConfig", () => {
     expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).plataforma).toBe("kenlo")
     expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).estrategia).toBe("api")
   })
+
+  it("KENLO_SEEDS: vazio = undefined; preenchido = string crua", () => {
+    expect(carregarConfig({}).kenloSeeds).toBeUndefined()
+    expect(carregarConfig({ KENLO_SEEDS: "  " }).kenloSeeds).toBeUndefined()
+    expect(carregarConfig({ KENLO_SEEDS: "/imoveis/a-venda/apartamento" }).kenloSeeds).toBe("/imoveis/a-venda/apartamento")
+  })
 })

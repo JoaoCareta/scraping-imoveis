@@ -15,6 +15,24 @@ const SEEDS_KENLO: SeedListagem[] = [
   ...TIPOS_KENLO.map((t) => ({ path: `/imoveis/para-alugar/${t}`, finalidade: "ALUGUER" as const, tipoImovel: t })),
 ]
 
+/**
+ * Converte um CSV de paths de listagem em seeds. A finalidade vem do 2º segmento do
+ * path (`para-alugar` → ALUGUER, senão VENDA) e o tipo do 3º. Ex.:
+ * "/imoveis/a-venda/apartamento/aracatuba, /imoveis/para-alugar/casa".
+ */
+export function parsearSeeds(csv: string): SeedListagem[] {
+  return csv
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((raw) => {
+      const path = raw.startsWith("/") ? raw : `/${raw}`
+      const segs = path.split("/").filter(Boolean) // [imoveis, <finalidade>, <tipo>, ...]
+      const finalidade = segs[1] === "para-alugar" ? ("ALUGUER" as const) : ("VENDA" as const)
+      return { path, finalidade, tipoImovel: segs[2] }
+    })
+}
+
 /** Único lugar que conhece o mapa plataforma → classe de fonte. */
 export function criarFonte(config: Config): FonteDeImoveis {
   if (config.plataforma === "kenlo") {
@@ -24,7 +42,7 @@ export function criarFonte(config: Config): FonteDeImoveis {
     const estrategia = new ColetaHtmlKenlo({
       origin: config.origin,
       timeoutMs: config.fetchTimeoutMs,
-      seeds: SEEDS_KENLO,
+      seeds: config.kenloSeeds ? parsearSeeds(config.kenloSeeds) : SEEDS_KENLO,
       avisar: (msg) => console.warn(msg),
     })
     return new KenloFonte({ origin: config.origin, clienteId: config.clienteId, estrategia })
