@@ -8,7 +8,8 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - root_default
+      - default        # comunicação interna do stack (cache-api ↔ scraper-api)
+      - root_default   # rede do n8n (cross-stack)
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
       interval: 30s
@@ -32,7 +33,8 @@ services:
     depends_on:
       - scraper-api
     networks:
-      - root_default
+      - default        # alcança scraper-api dentro do stack
+      - root_default   # alcança o Postgres externo (inove-postgres) e o n8n
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 30s
