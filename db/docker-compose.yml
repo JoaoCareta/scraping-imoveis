@@ -1,0 +1,48 @@
+# Banco de dados Inove — stack SEPARADO do scraper.
+#
+# Responsabilidades:
+#   - O scraper-api SÓ LÊ imóveis da fonte (Solr). Não toca neste banco.
+#   - O n8n é quem GRAVA aqui (cache do catálogo + conversas + avaliações),
+#     APÓS ler do scraper.
+#   - A cache-api apenas LÊ este banco.
+#
+# Rede: usa a rede do n8n (root_default) para que n8n e cache-api alcancem o banco
+# pelo nome do container (inove-postgres). Suba o n8n ANTES (ele cria root_default).
+#
+# Subir:   cd db && docker compose up -d
+# Derrubar: cd db && docker compose down   (NÃO apaga o volume de dados)
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: inove-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inove
+      POSTGRES_PASSWORD: inove
+      POSTGRES_DB: inove
+    ports:
+      - "5432:5432"
+    volumes:
+      - inove_pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inove -d inove"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - root_default
+
+# Rede compartilhada com o n8n. external: true → precisa já existir (suba o n8n primeiro).
+networks:
+  root_default:
+    external: true
+
+# Reaproveita o volume de dados que JÁ existe (criado pelo antigo stack do scraper),
+# para não perder o que já está gravado (cache + conversas + avaliações).
+# Se o nome abaixo não bater, rode `docker volume ls` e ajuste "name:".
+volumes:
+  inove_pgdata:
+    external: true
+    name: scrapping_inove_pgdata

@@ -1,4 +1,5 @@
 services:
+  # Scraper — responsabilidade ÚNICA: LER imóveis da fonte (Solr). NÃO grava em banco.
   scraper-api:
     build: .
     container_name: scraper-api
@@ -6,34 +7,17 @@ services:
     env_file: .env
     ports:
       - "3000:3000"
+    networks:
+      - root_default
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # PostgreSQL do atendimento Inove (cache de catálogo, conversas, avaliações).
-  # Credenciais LOCAIS DE DEV — trocar em produção (via .env / secrets).
-  postgres:
-    image: postgres:16
-    container_name: inove-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: inove
-      POSTGRES_PASSWORD: inove
-      POSTGRES_DB: inove
-    ports:
-      - "5432:5432"
-    volumes:
-      - inove_pgdata:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U inove -d inove"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # API de leitura com cache: lê o catálogo no Postgres; cai pro scraper só se vazio.
+  # API de leitura com cache: LÊ o catálogo no Postgres; cai pro scraper só se vazio.
+  # O Postgres NÃO faz parte deste stack — vive em db/docker-compose.yml e é alcançado
+  # pela rede root_default, pelo nome do container (inove-postgres).
   cache-api:
     build: .
     container_name: cache-api
@@ -41,28 +25,25 @@ services:
     command: ["node", "dist/cache-api/main-cache.js"]
     environment:
       PORT: "3001"
-      DATABASE_URL: postgres://inove:inove@postgres:5432/inove
+      DATABASE_URL: postgres://inove:inove@inove-postgres:5432/inove
       SCRAPER_URL: http://scraper-api:3000
     ports:
       - "3001:3001"
     depends_on:
-      - postgres
       - scraper-api
+    networks:
+      - root_default
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-volumes:
-  inove_pgdata:
+# Rede compartilhada com o n8n (criada pelo stack do n8n, projeto "root").
+# external: true → precisa já existir. Suba o n8n ANTES do scraper.
+networks:
+  root_default:
+    external: true
 
-# A API fica acessível em http://localhost:3000 (e na rede local, porta 3000)
-# enquanto o container correr.
-#
-# Para integrar com o n8n no mesmo host, ligar este serviço à rede docker do n8n,
-# adicionando ao serviço:
-#     networks: [n8n_net]
-# e no fim do ficheiro:
-#     networks:
-#       n8n_net: { external: true, name: NOME_DA_REDE_DO_N8N }
+# A API fica acessível em http://localhost:3000 (scraper) e :3001 (cache) enquanto correr.
+# O Postgres agora é um stack à parte (db/docker-compose.yml) — o scraper não o gerencia.
