@@ -62,6 +62,7 @@ export const GRUPOS: Record<number, string> = {
   496: "churrasqueira", 17: "churrasqueira", 615: "churrasqueira",
   235: "sacada", 283: "sacada", 85: "sacada",
   76: "portaria", 312: "portaria", 204: "portaria", 515: "portaria",
+  6: "suite", 626: "suite",
 }
 
 export function resolverCaracteristica(idt: number): CaracteristicaResolvida | undefined {

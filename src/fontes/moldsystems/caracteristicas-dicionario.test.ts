@@ -14,6 +14,11 @@ describe("resolverCaracteristica", () => {
     expect(resolverCaracteristica(592)?.grupo).toBe("elevador") // Elevadores
   })
 
+  it("agrupa suítes sob 'suite' (idt 6 numérico e 626 Suíte Master)", () => {
+    expect(resolverCaracteristica(6)?.grupo).toBe("suite") // Sendo dormitórios suítes
+    expect(resolverCaracteristica(626)?.grupo).toBe("suite") // Suíte Master
+  })
+
   it("devolve undefined para idt desconhecido", () => {
     expect(resolverCaracteristica(999999)).toBeUndefined()
   })

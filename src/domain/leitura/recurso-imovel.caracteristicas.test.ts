@@ -36,6 +36,20 @@ describe("recurso-imovel — características", () => {
     // idt 95 "Área Útil" (NUMERICA, SEM grupo) → não polui comodidades
     expect(rec.caracteristicas.comodidades).not.toContain("area-util")
   })
+
+  it("promove suíte (idt 6 numérico>0) para comodidade 'suite'", () => {
+    const doc = {
+      ...imovel3339,
+      jsonCharacteristics: JSON.stringify([
+        { desInformation: "2", desInformationFormatted: "2", characteristics: { idtCharacteristics: 6 } },
+      ]),
+    }
+    const r = imoveisDeSolrDoc(doc, CTX).find((x) => x.ok)
+    expect(r?.ok).toBe(true)
+    if (!r || !r.ok) return
+    const rec = imovelParaRecurso(r.value)
+    expect(rec.caracteristicas.comodidades).toContain("suite")
+  })
 })
 
 describe("recurso-imovel — localização, mídia e condomínio", () => {
