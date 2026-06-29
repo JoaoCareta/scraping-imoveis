@@ -34,6 +34,10 @@ interface BreadcrumbLd {
 const POS_CIDADE = 5
 const POS_BAIRRO = 6
 
+// Kenlo usa um valor simbólico (ex.: 0,01) como placeholder de "sob consulta".
+// Preços abaixo deste piso são tratados como ausência de preço.
+const PRECO_MINIMO_PLAUSIVEL = 1
+
 function refDePath(url: string): string {
   try {
     const p = url.startsWith("http") ? new URL(url).pathname : url
@@ -97,7 +101,7 @@ export function imovelDeHtmlDetalhe(
   const off = Array.isArray(offers) ? offers[0] : offers
   const precoNum = off?.price != null ? Number(off.price) : NaN
   const preco =
-    Number.isFinite(precoNum) && precoNum > 0
+    Number.isFinite(precoNum) && precoNum >= PRECO_MINIMO_PLAUSIVEL
       ? {
           valor: precoNum,
           moeda: "BRL" as const,

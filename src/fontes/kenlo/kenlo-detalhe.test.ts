@@ -37,4 +37,17 @@ describe("imovelDeHtmlDetalhe", () => {
     const r = imovelDeHtmlDetalhe("<html><body>lixo</body></html>", URL_AP1048, { finalidade: "VENDA" }, ctx)
     expect(typeof r.ok).toBe("boolean") // não lança; provavelmente um reject de Imovel.criar
   })
+
+  it("preço placeholder R$0,01 do Kenlo é tratado como sob consulta (preço ausente)", () => {
+    const html = `<html><head>
+    <link rel="canonical" href="https://www.cairesengimob.com.br/imovel/casa-x/CA9999-CIMB"/>
+    <script type="application/ld+json">{"@type":"Product","sku":"CA9999-CIMB","offers":[{"@type":"Offer","price":"0.01","priceCurrency":"BRL"}]}</script>
+    </head><body><h1><span>Casa</span></h1></body></html>`
+    const r = imovelDeHtmlDetalhe(html, "https://www.cairesengimob.com.br/imovel/casa-x/CA9999-CIMB", { finalidade: "VENDA", tipoImovel: "casa" }, ctx)
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.value.ref.valor).toBe("CA9999-CIMB")
+      expect(r.value.preco).toBeUndefined()
+    }
+  })
 })
