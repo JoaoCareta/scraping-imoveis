@@ -1,6 +1,7 @@
 import { ResultadoExtracao, ImovelRejeitado } from "../fonte-de-imoveis"
 import { FonteIndisponivelError, FonteTimeoutError } from "../erros"
 import { Imovel } from "../../domain/imovel/imovel"
+import { erroValidacao } from "../../domain/imovel/erro-validacao"
 import { EstrategiaColetaKenlo, KenloContexto, DicaListagem } from "./estrategia"
 import { urlsDeDetalheDaListagem } from "./kenlo-listagem"
 import { imovelDeHtmlDetalhe } from "./kenlo-detalhe"
@@ -81,8 +82,15 @@ export class ColetaHtmlKenlo implements EstrategiaColetaKenlo {
       const lote = entradas.slice(i, i + this.concorrencia)
       const resultados = await Promise.all(
         lote.map(async ([url, dica]) => {
-          const html = await this.obterHtml(url)
-          return html == null ? null : imovelDeHtmlDetalhe(html, url, dica, ctx)
+          try {
+            const html = await this.obterHtml(url)
+            return html == null ? null : imovelDeHtmlDetalhe(html, url, dica, ctx)
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            this.avisar(`falha ao coletar detalhe ${url}: ${msg}`)
+            // falha de UM imóvel não derruba a coleta (spec §9) → vira rejeitado
+            return { ok: false as const, error: [erroValidacao("fonte", msg)] }
+          }
         }),
       )
       for (let j = 0; j < resultados.length; j++) {

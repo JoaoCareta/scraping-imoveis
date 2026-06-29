@@ -16,4 +16,7 @@ describe("criarFonte", () => {
   it("plataforma kenlo → KenloFonte", () => {
     expect(criarFonte({ ...base, plataforma: "kenlo", origin: "https://www.cairesengimob.com.br" })).toBeInstanceOf(KenloFonte)
   })
+  it("plataforma kenlo + estrategia api → falha-rápido (ColetaApiKenlo não implementada)", () => {
+    expect(() => criarFonte({ ...base, plataforma: "kenlo", estrategia: "api", origin: "https://www.cairesengimob.com.br" })).toThrow(/não implementada/)
+  })
 })

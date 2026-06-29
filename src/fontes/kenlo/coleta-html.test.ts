@@ -37,4 +37,28 @@ describe("ColetaHtmlKenlo", () => {
     expect(cont.paginasPedidas).toBe(2)                  // pediu page=1 (cards) e page=2 (404 → parou)
     expect(Array.isArray(r.rejeitados)).toBe(true)
   })
+
+  it("falha em um detalhe (HTTP 500) não derruba a coleta — vai para rejeitados", async () => {
+    let detalheChamadas = 0
+    const fetchFn = (async (input: unknown) => {
+      const url = String(input)
+      if (url.includes("/imoveis/")) {
+        const m = url.match(/[?&]page=(\d+)/); const page = m ? Number(m[1]) : 1
+        if (page >= 2) return new Response("", { status: 404 })
+        return new Response(readFileSync(new URL("./fixtures/listagem-apartamentos-venda.html", import.meta.url), "utf8"), { status: 200 })
+      }
+      detalheChamadas++
+      if (detalheChamadas === 1) return new Response("erro", { status: 500 }) // 1 detalhe falha
+      return new Response(readFileSync(new URL("./fixtures/detalhe-ap1048.html", import.meta.url), "utf8"), { status: 200 })
+    }) as unknown as typeof fetch
+
+    const estrategia = new ColetaHtmlKenlo({
+      origin: ctx.origin, timeoutMs: 2000, fetchFn,
+      seeds: [{ path: "/imoveis/a-venda/apartamento", finalidade: "VENDA", tipoImovel: "apartamento" }],
+      concorrencia: 4, retries: 0, dormir: async () => {},
+    })
+    const r = await estrategia.coletar(ctx) // NÃO deve lançar
+    expect(r.imoveis.length).toBeGreaterThan(0) // os demais coletados
+    expect(r.rejeitados.length).toBe(1)          // o que falhou virou rejeitado
+  })
 })

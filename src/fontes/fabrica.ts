@@ -18,6 +18,9 @@ const SEEDS_KENLO: SeedListagem[] = [
 /** Único lugar que conhece o mapa plataforma → classe de fonte. */
 export function criarFonte(config: Config): FonteDeImoveis {
   if (config.plataforma === "kenlo") {
+    if (config.estrategia === "api") {
+      throw new Error("ESTRATEGIA=api (ColetaApiKenlo) ainda não implementada para a plataforma kenlo")
+    }
     const estrategia = new ColetaHtmlKenlo({
       origin: config.origin,
       timeoutMs: config.fetchTimeoutMs,
