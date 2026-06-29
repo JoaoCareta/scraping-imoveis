@@ -37,4 +37,10 @@ describe("carregarConfig", () => {
     expect(carregarConfig({ KENLO_SEEDS: "  " }).kenloSeeds).toBeUndefined()
     expect(carregarConfig({ KENLO_SEEDS: "/imoveis/a-venda/apartamento" }).kenloSeeds).toBe("/imoveis/a-venda/apartamento")
   })
+
+  it("MAX_PAGINAS: vazio/zero = undefined; positivo = número", () => {
+    expect(carregarConfig({}).kenloMaxPaginas).toBeUndefined()
+    expect(carregarConfig({ MAX_PAGINAS: "0" }).kenloMaxPaginas).toBeUndefined()
+    expect(carregarConfig({ MAX_PAGINAS: "2" }).kenloMaxPaginas).toBe(2)
+  })
 })

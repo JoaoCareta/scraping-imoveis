@@ -43,6 +43,7 @@ export function criarFonte(config: Config): FonteDeImoveis {
       origin: config.origin,
       timeoutMs: config.fetchTimeoutMs,
       seeds: config.kenloSeeds ? parsearSeeds(config.kenloSeeds) : SEEDS_KENLO,
+      maxPaginas: config.kenloMaxPaginas,
       avisar: (msg) => console.warn(msg),
     })
     return new KenloFonte({ origin: config.origin, clienteId: config.clienteId, estrategia })

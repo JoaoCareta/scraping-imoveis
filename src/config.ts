@@ -11,6 +11,8 @@ export interface Config {
   estrategia: "html" | "api"
   /** (kenlo) CSV de paths de listagem para escopar o crawl; vazio = catálogo inteiro. */
   kenloSeeds?: string
+  /** (kenlo) limite de páginas por listagem; vazio = sem cap explícito (default do adaptador). */
+  kenloMaxPaginas?: number
 }
 
 type Env = Record<string, string | undefined>
@@ -34,5 +36,9 @@ export function carregarConfig(env: Env): Config {
     plataforma: env.PLATAFORMA === "kenlo" ? "kenlo" : "moldsystems",
     estrategia: env.ESTRATEGIA === "api" ? "api" : "html",
     kenloSeeds: env.KENLO_SEEDS?.trim() || undefined,
+    kenloMaxPaginas: (() => {
+      const n = numero(env.MAX_PAGINAS, 0)
+      return n > 0 ? n : undefined
+    })(),
   }
 }
