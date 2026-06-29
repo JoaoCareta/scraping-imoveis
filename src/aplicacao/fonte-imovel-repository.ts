@@ -47,8 +47,8 @@ export class FonteImovelRepository implements ImovelRepository {
 
     const passaAtivo = r.estado.ativo === querAtivo
     const passaFinalidade = f.finalidade == null || r.finalidade === f.finalidade
-    const passaPrecoMin = f.precoMin == null || r.preco.valor >= f.precoMin
-    const passaPrecoMax = f.precoMax == null || r.preco.valor <= f.precoMax
+    const passaPrecoMin = f.precoMin == null || (r.preco != null && r.preco.valor >= f.precoMin)
+    const passaPrecoMax = f.precoMax == null || (r.preco != null && r.preco.valor <= f.precoMax)
     const passaQuartos = f.quartos == null || r.caracteristicas.quartos === f.quartos
     const passaCidade = igualTexto(r.localizacao.cidade, f.cidade)
     const passaBairro = igualTexto(r.localizacao.bairro, f.bairro)

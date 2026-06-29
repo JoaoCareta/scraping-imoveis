@@ -21,7 +21,7 @@ describe("Imovel.criar", () => {
     if (r.ok) {
       expect(r.value.ref.valor).toBe("REF-1")
       expect(r.value.finalidade).toBe("ALUGUER")
-      expect(r.value.preco.valor).toBe(800)
+      expect(r.value.preco?.valor).toBe(800)
       expect(r.value.extras["piso"]).toBe(3)
     }
   })
@@ -58,6 +58,42 @@ describe("Imovel imutabilidade de extras", () => {
     original["piso"] = 99
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.value.extras["piso"]).toBe(3)
+  })
+})
+
+describe("Imovel — preço opcional", () => {
+  const base: PropsImovel = {
+    ref: "AP1", clienteId: "caires", urlSite: "https://www.cairesengimob.com.br/imovel/x/AP1",
+    finalidade: "VENDA",
+    preco: { valor: 100000, moeda: "BRL", periodo: "TOTAL" },
+    localizacao: { zonaTexto: "Centro", cidade: "Aracatuba" },
+    caracteristicas: { lista: [], itens: [] },
+    media: {}, extras: {},
+    estado: { ativo: true, extraidoEm: "2026-06-29T10:00:00.000Z", atualizadoEm: "2026-06-29T10:00:00.000Z", hashConteudo: "h" },
+  }
+
+  it("aceita imóvel SEM preço (sob consulta) e fica com preco undefined", () => {
+    const { preco, ...semPreco } = base
+    const r = Imovel.criar(semPreco as PropsImovel)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.preco).toBeUndefined()
+  })
+
+  it("com preço válido continua válido e mantém o preço", () => {
+    const r = Imovel.criar(base)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value.preco?.valor).toBe(100000)
+  })
+
+  it("preço presente porém inválido (<=0) ainda rejeita", () => {
+    const r = Imovel.criar({ ...base, preco: { valor: 0, moeda: "BRL", periodo: "TOTAL" } })
+    expect(r.ok).toBe(false)
+  })
+
+  it("invariante período↔finalidade só vale quando há preço", () => {
+    const { preco, ...semPreco } = base
+    const r = Imovel.criar({ ...(semPreco as PropsImovel), finalidade: "ALUGUER" })
+    expect(r.ok).toBe(true) // sem preço, não checa período
   })
 })
 

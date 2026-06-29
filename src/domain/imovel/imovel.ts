@@ -12,7 +12,7 @@ export interface PropsImovel {
   clienteId: string
   urlSite: string
   finalidade: string
-  preco: { valor: number; moeda: Moeda; periodo: PeriodoPreco }
+  preco?: { valor: number; moeda: Moeda; periodo: PeriodoPreco }
   localizacao: PropsLocalizacao
   caracteristicas: Caracteristicas
   media: Media
@@ -26,7 +26,7 @@ export class Imovel {
     readonly clienteId: string,
     readonly urlSite: UrlSite,
     readonly finalidade: Finalidade,
-    readonly preco: Preco,
+    readonly preco: Preco | undefined,
     readonly localizacao: Localizacao,
     readonly caracteristicas: Caracteristicas,
     readonly media: Media,
@@ -49,25 +49,31 @@ export class Imovel {
     const finalidadeValida = isFinalidade(props.finalidade)
     if (!finalidadeValida) erros.push(erroValidacao("finalidade", "finalidade tem de ser ALUGUER ou VENDA"))
 
-    const precoR = Preco.criar(props.preco.valor, props.preco.moeda, props.preco.periodo)
-    if (!precoR.ok) erros.push(precoR.error)
+    // Preço é OPCIONAL: ausência = "sob consulta". Só valida quando fornecido.
+    let preco: Preco | undefined
+    if (props.preco) {
+      const precoR = Preco.criar(props.preco.valor, props.preco.moeda, props.preco.periodo)
+      if (!precoR.ok) {
+        erros.push(precoR.error)
+      } else {
+        preco = precoR.value
+        if (finalidadeValida) {
+          const esperado = Preco.periodoEsperado(props.finalidade as Finalidade)
+          if (preco.periodo !== esperado) {
+            erros.push(erroValidacao("preco.periodo", `Para ${props.finalidade} o período tem de ser ${esperado}`))
+          }
+        }
+      }
+    }
 
     const locR = Localizacao.criar(props.localizacao)
     if (!locR.ok) erros.push(locR.error)
-
-    // Invariante entre campos: período coerente com finalidade (só avaliável se ambos válidos)
-    if (finalidadeValida && precoR.ok) {
-      const esperado = Preco.periodoEsperado(props.finalidade as Finalidade)
-      if (precoR.value.periodo !== esperado) {
-        erros.push(erroValidacao("preco.periodo", `Para ${props.finalidade} o período tem de ser ${esperado}`))
-      }
-    }
 
     if (erros.length > 0) return err(erros)
 
     // Guarda de narrowing: inalcançável (acima já retornámos se houve erros).
     // Existe só para o TypeScript estreitar os Result para o construtor — não lança.
-    if (!refR.ok || !urlR.ok || !precoR.ok || !locR.ok || !finalidadeValida) {
+    if (!refR.ok || !urlR.ok || !locR.ok || !finalidadeValida) {
       return err(erros)
     }
 
@@ -77,7 +83,7 @@ export class Imovel {
         clienteId,
         urlR.value,
         props.finalidade as Finalidade,
-        precoR.value,
+        preco,
         locR.value,
         props.caracteristicas,
         props.media,

@@ -145,9 +145,9 @@ describe("imoveisDeSolrDoc (integração com COD 1910 real)", () => {
       const im = r.value
       expect(im.ref.valor).toBe("1910")
       expect(im.finalidade).toBe("ALUGUER")
-      expect(im.preco.valor).toBe(1050)
-      expect(im.preco.moeda).toBe("BRL")
-      expect(im.preco.periodo).toBe("MENSAL")
+      expect(im.preco?.valor).toBe(1050)
+      expect(im.preco?.moeda).toBe("BRL")
+      expect(im.preco?.periodo).toBe("MENSAL")
       expect(im.localizacao.cidade).toBe("Araçatuba")
       expect(im.localizacao.bairro).toBe("Vila Estádio")
       expect(im.caracteristicas.quartos).toBe(2)

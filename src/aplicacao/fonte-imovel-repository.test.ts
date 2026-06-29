@@ -38,7 +38,7 @@ describe("FonteImovelRepository", () => {
     expect(c.total).toBe(3)
     expect(c.rejeitados).toBe(2)
     expect(c.extraidoEm).toBe("2026-06-18T10:00:00.000Z")
-    expect(c.imoveis.every((i) => typeof i.preco.valor === "number")).toBe(true)
+    expect(c.imoveis.every((i) => typeof i.preco?.valor === "number")).toBe(true)
   })
 
   it("filtra por finalidade", async () => {

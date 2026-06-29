@@ -6,7 +6,7 @@ export interface RecursoImovel {
   clienteId: string
   urlSite: string
   finalidade: "ALUGUER" | "VENDA"
-  preco: { valor: number; moeda: string; periodo: string }
+  preco?: { valor: number; moeda: string; periodo: string }
   localizacao: {
     zonaTexto: string
     bairro?: string
@@ -53,7 +53,9 @@ export function imovelParaRecurso(imovel: Imovel): RecursoImovel {
     clienteId: imovel.clienteId,
     urlSite: imovel.urlSite.valor,
     finalidade: imovel.finalidade,
-    preco: { valor: imovel.preco.valor, moeda: imovel.preco.moeda, periodo: imovel.preco.periodo },
+    preco: imovel.preco
+      ? { valor: imovel.preco.valor, moeda: imovel.preco.moeda, periodo: imovel.preco.periodo }
+      : undefined,
     localizacao: {
       zonaTexto: imovel.localizacao.zonaTexto,
       bairro: imovel.localizacao.bairro,
