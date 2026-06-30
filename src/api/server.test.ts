@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest"
 import { criarServidor } from "./server"
 import { Config } from "../config"
 import { ImovelRepository, Coleta, FiltrosImovel } from "../aplicacao/imovel-repository"
+import { RegistroDeFontes } from "../fontes/registro-de-fontes"
 import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
 
 const CONFIG_BASE: Config = {
-  port: 3000, host: "0.0.0.0", clienteId: "innove",
-  origin: "https://x", solrNumRows: 5000, fetchTimeoutMs: 8000, logLevel: "silent",
-  plataforma: "moldsystems", estrategia: "html",
+  port: 3000, host: "0.0.0.0", fetchTimeoutMs: 8000, logLevel: "silent",
+  clientes: [{ id: "innove", plataforma: "moldsystems", estrategia: "html", origin: "https://x", solrNumRows: 5000 }],
 }
 
 function recurso(ref: string, finalidade: "ALUGUER" | "VENDA"): Coleta["imoveis"][number] {
@@ -30,39 +30,36 @@ function repoFake(over: Partial<ImovelRepository> = {}): ImovelRepository {
   }
 }
 
+/** Registro de teste: mapeia id → repo. Default: só "innove". */
+function registroFake(repos: Record<string, ImovelRepository> = { innove: repoFake() }): RegistroDeFontes {
+  return { obter: (cliente) => repos[cliente] }
+}
+
 describe("servidor", () => {
   it("GET /health → 200 ok", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
+    const app = criarServidor(registroFake(), CONFIG_BASE)
     const res = await app.inject({ method: "GET", url: "/health" })
     expect(res.statusCode).toBe(200)
     expect(res.json().status).toBe("ok")
   })
 
-  it("GET /imoveis?comodidades=piscina,portaria → repassa array para o repo", async () => {
-    let recebido: FiltrosImovel | undefined
-    const app = criarServidor(
-      repoFake({ buscar: async (f) => { recebido = f; return { imoveis: [], total: 0, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" } } }),
-      CONFIG_BASE,
-    )
-    const res = await app.inject({ method: "GET", url: "/imoveis?comodidades=piscina,portaria" })
-    expect(res.statusCode).toBe(200)
-    expect(recebido?.comodidades).toEqual(["piscina", "portaria"])
-  })
-
-  it("GET /imoveis?condominio=Residencial Elev → repassa o termo ao repo", async () => {
-    let recebido: FiltrosImovel | undefined
-    const app = criarServidor(
-      repoFake({ buscar: async (f) => { recebido = f; return { imoveis: [], total: 0, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" } } }),
-      CONFIG_BASE,
-    )
-    const res = await app.inject({ method: "GET", url: "/imoveis?condominio=Residencial%20Elev" })
-    expect(res.statusCode).toBe(200)
-    expect(recebido?.condominio).toBe("Residencial Elev")
-  })
-
-  it("GET /imoveis → 200 envelope ColetaConcluida", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
+  it("GET /imoveis sem cliente → 400 CLIENTE_OBRIGATORIO", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
     const res = await app.inject({ method: "GET", url: "/imoveis" })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().erro.codigo).toBe("CLIENTE_OBRIGATORIO")
+  })
+
+  it("GET /imoveis?cliente=caires (não registrado) → 400 CLIENTE_DESCONHECIDO", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires" })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().erro.codigo).toBe("CLIENTE_DESCONHECIDO")
+  })
+
+  it("GET /imoveis?cliente=innove → 200 envelope ColetaConcluida", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.evento).toBe("ColetaConcluida")
@@ -70,43 +67,69 @@ describe("servidor", () => {
     expect(body.imoveis[0].ref).toBe("1910")
   })
 
+  it("seleciona o repo do cliente pedido (caires ≠ innove)", async () => {
+    const colCaires: Coleta = { imoveis: [recurso("C1", "VENDA")], total: 1, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" }
+    const app = criarServidor(
+      registroFake({ innove: repoFake(), caires: repoFake({ buscar: async () => colCaires }) }),
+      CONFIG_BASE,
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires" })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().imoveis[0].ref).toBe("C1")
+  })
+
+  it("GET /imoveis?cliente=innove&comodidades=piscina,portaria → repassa array para o repo", async () => {
+    let recebido: FiltrosImovel | undefined
+    const app = criarServidor(
+      registroFake({ innove: repoFake({ buscar: async (f) => { recebido = f; return { imoveis: [], total: 0, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z" } } }) }),
+      CONFIG_BASE,
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&comodidades=piscina,portaria" })
+    expect(res.statusCode).toBe(200)
+    expect(recebido?.comodidades).toEqual(["piscina", "portaria"])
+  })
+
   it("GET /imoveis com finalidade inválida → 400", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?finalidade=XPTO" })
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&finalidade=XPTO" })
     expect(res.statusCode).toBe(400)
   })
 
-  it("GET /imoveis/:ref inexistente → 404", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis/9999" })
+  it("GET /imoveis/:ref sem cliente → 400", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis/1910" })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it("GET /imoveis/:ref?cliente=innove inexistente → 404", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis/9999?cliente=innove" })
     expect(res.statusCode).toBe(404)
   })
 
   it("fonte indisponível → 503 com evento", async () => {
-    const repo = repoFake({ buscar: async () => { throw new FonteIndisponivelError("down") } })
-    const app = criarServidor(repo, CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis" })
+    const app = criarServidor(registroFake({ innove: repoFake({ buscar: async () => { throw new FonteIndisponivelError("down") } }) }), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
     expect(res.statusCode).toBe(503)
     expect(res.json().evento).toBe("FonteIndisponivel")
   })
 
   it("timeout da fonte → 504", async () => {
-    const repo = repoFake({ buscar: async () => { throw new FonteTimeoutError("slow") } })
-    const app = criarServidor(repo, CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis" })
+    const app = criarServidor(registroFake({ innove: repoFake({ buscar: async () => { throw new FonteTimeoutError("slow") } }) }), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
     expect(res.statusCode).toBe(504)
   })
 
   it("API key ligada: sem header → 401; com header → 200", async () => {
-    const app = criarServidor(repoFake(), { ...CONFIG_BASE, apiKey: "segredo" })
-    const semHeader = await app.inject({ method: "GET", url: "/imoveis" })
+    const app = criarServidor(registroFake(), { ...CONFIG_BASE, apiKey: "segredo" })
+    const semHeader = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
     expect(semHeader.statusCode).toBe(401)
-    const comHeader = await app.inject({ method: "GET", url: "/imoveis", headers: { "x-api-key": "segredo" } })
+    const comHeader = await app.inject({ method: "GET", url: "/imoveis?cliente=innove", headers: { "x-api-key": "segredo" } })
     expect(comHeader.statusCode).toBe(200)
   })
 
   it("API key ligada não bloqueia /health", async () => {
-    const app = criarServidor(repoFake(), { ...CONFIG_BASE, apiKey: "segredo" })
+    const app = criarServidor(registroFake(), { ...CONFIG_BASE, apiKey: "segredo" })
     const res = await app.inject({ method: "GET", url: "/health" })
     expect(res.statusCode).toBe(200)
   })
@@ -116,8 +139,8 @@ describe("servidor", () => {
       imoveis: [recurso("1", "ALUGUER"), recurso("2", "ALUGUER"), recurso("3", "VENDA")],
       total: 3, rejeitados: 0, extraidoEm: "2026-06-18T10:00:00.000Z",
     }
-    const app = criarServidor(repoFake({ buscar: async () => coleta3 }), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?limit=2&offset=1" })
+    const app = criarServidor(registroFake({ innove: repoFake({ buscar: async () => coleta3 }) }), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&limit=2&offset=1" })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.total).toBe(3)
@@ -126,36 +149,16 @@ describe("servidor", () => {
     expect(body.imoveis.map((i: { ref: string }) => i.ref)).toEqual(["2", "3"])
   })
 
-  it("GET /imoveis?cliente=innove (cliente desta instância) → 200", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
-    expect(res.statusCode).toBe(200)
-    expect(res.json().evento).toBe("ColetaConcluida")
-  })
-
-  it("GET /imoveis?cliente=caires (instância só atende innove) → 409, sem vazar dados", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires" })
-    expect(res.statusCode).toBe(409)
-    expect(res.json().erro.codigo).toBe("CLIENTE_NAO_ATENDIDO")
-  })
-
-  it("GET /imoveis/:ref?cliente=caires (instância só atende innove) → 409", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis/1910?cliente=caires" })
-    expect(res.statusCode).toBe(409)
-  })
-
   it("ignora query params vazios em vez de dar 400", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?finalidade=&bairro=&precoMax=2000" })
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&finalidade=&bairro=&precoMax=2000" })
     expect(res.statusCode).toBe(200)
     expect(res.json().evento).toBe("ColetaConcluida")
   })
 
   it("remove valores coringa (qualquer/tanto faz) em vez de filtrar ou dar 400", async () => {
-    const app = criarServidor(repoFake(), CONFIG_BASE)
-    const res = await app.inject({ method: "GET", url: "/imoveis?finalidade=qualquer&bairro=qualquer&tipoImovel=tanto%20faz" })
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&finalidade=qualquer&bairro=qualquer&tipoImovel=tanto%20faz" })
     expect(res.statusCode).toBe(200)
     expect(res.json().evento).toBe("ColetaConcluida")
   })

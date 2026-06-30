@@ -1,46 +1,62 @@
 import { describe, it, expect } from "vitest"
 import { carregarConfig } from "./config"
 
+const UM = JSON.stringify([{ id: "innove", plataforma: "moldsystems", origin: "https://x" }])
+
 describe("carregarConfig", () => {
-  it("aplica defaults quando o ambiente está vazio", () => {
-    const c = carregarConfig({})
+  it("aplica defaults de infra e parseia CLIENTES", () => {
+    const c = carregarConfig({ CLIENTES: UM })
     expect(c.port).toBe(3000)
     expect(c.host).toBe("0.0.0.0")
-    expect(c.clienteId).toBe("innove")
-    expect(c.origin).toBe("https://imobiliariainnove.com.br")
-    expect(c.solrNumRows).toBe(5000)
     expect(c.fetchTimeoutMs).toBe(8000)
     expect(c.apiKey).toBeUndefined()
+    expect(c.clientes).toHaveLength(1)
+    expect(c.clientes[0]).toMatchObject({ id: "innove", plataforma: "moldsystems", estrategia: "html", origin: "https://x", solrNumRows: 5000 })
   })
 
-  it("lê e converte valores do ambiente", () => {
-    const c = carregarConfig({ PORT: "8080", SOLR_NUM_ROWS: "100", API_KEY: "segredo" })
+  it("lê e converte infra do ambiente", () => {
+    const c = carregarConfig({ CLIENTES: UM, PORT: "8080", API_KEY: "segredo" })
     expect(c.port).toBe(8080)
-    expect(c.solrNumRows).toBe(100)
     expect(c.apiKey).toBe("segredo")
   })
 
   it("API_KEY vazia continua undefined (gate desligado)", () => {
-    const c = carregarConfig({ API_KEY: "" })
-    expect(c.apiKey).toBeUndefined()
+    expect(carregarConfig({ CLIENTES: UM, API_KEY: "" }).apiKey).toBeUndefined()
   })
 
-  it("plataforma e estrategia: defaults e override por env", () => {
-    expect(carregarConfig({}).plataforma).toBe("moldsystems")
-    expect(carregarConfig({}).estrategia).toBe("html")
-    expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).plataforma).toBe("kenlo")
-    expect(carregarConfig({ PLATAFORMA: "kenlo", ESTRATEGIA: "api" }).estrategia).toBe("api")
+  it("parseia vários clientes com campos por plataforma", () => {
+    const json = JSON.stringify([
+      { id: "innove", plataforma: "moldsystems", origin: "https://i", solrNumRows: 100 },
+      { id: "caires", plataforma: "kenlo", estrategia: "html", origin: "https://c", kenloMaxPaginas: 2 },
+    ])
+    const c = carregarConfig({ CLIENTES: json })
+    expect(c.clientes.map((x) => x.id)).toEqual(["innove", "caires"])
+    expect(c.clientes[0].solrNumRows).toBe(100)
+    expect(c.clientes[1]).toMatchObject({ plataforma: "kenlo", kenloMaxPaginas: 2 })
   })
 
-  it("KENLO_SEEDS: vazio = undefined; preenchido = string crua", () => {
-    expect(carregarConfig({}).kenloSeeds).toBeUndefined()
-    expect(carregarConfig({ KENLO_SEEDS: "  " }).kenloSeeds).toBeUndefined()
-    expect(carregarConfig({ KENLO_SEEDS: "/imoveis/a-venda/apartamento" }).kenloSeeds).toBe("/imoveis/a-venda/apartamento")
+  it("CLIENTES ausente → erro", () => {
+    expect(() => carregarConfig({})).toThrow(/CLIENTES/)
   })
 
-  it("MAX_PAGINAS: vazio/zero = undefined; positivo = número", () => {
-    expect(carregarConfig({}).kenloMaxPaginas).toBeUndefined()
-    expect(carregarConfig({ MAX_PAGINAS: "0" }).kenloMaxPaginas).toBeUndefined()
-    expect(carregarConfig({ MAX_PAGINAS: "2" }).kenloMaxPaginas).toBe(2)
+  it("CLIENTES com JSON inválido → erro", () => {
+    expect(() => carregarConfig({ CLIENTES: "{nope" })).toThrow(/JSON/)
+  })
+
+  it("CLIENTES lista vazia → erro", () => {
+    expect(() => carregarConfig({ CLIENTES: "[]" })).toThrow(/não-vazia/)
+  })
+
+  it("cliente sem origin → erro", () => {
+    expect(() => carregarConfig({ CLIENTES: JSON.stringify([{ id: "x", plataforma: "kenlo" }]) })).toThrow(/origin/)
+  })
+
+  it("plataforma inválida → erro", () => {
+    expect(() => carregarConfig({ CLIENTES: JSON.stringify([{ id: "x", plataforma: "outra", origin: "https://x" }]) })).toThrow(/plataforma/)
+  })
+
+  it("id duplicado → erro", () => {
+    const json = JSON.stringify([{ id: "x", plataforma: "kenlo", origin: "https://a" }, { id: "x", plataforma: "kenlo", origin: "https://b" }])
+    expect(() => carregarConfig({ CLIENTES: json })).toThrow(/duplicado/)
   })
 })

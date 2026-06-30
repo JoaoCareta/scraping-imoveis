@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance, FastifyRequest } from "fastify"
 import { Config } from "../config"
 import { ImovelRepository, FiltrosImovel } from "../aplicacao/imovel-repository"
+import { RegistroDeFontes } from "../fontes/registro-de-fontes"
 import { FonteIndisponivelError, FonteTimeoutError } from "../fontes/erros"
 import { ehSemPreferencia } from "../aplicacao/sem-preferencia"
 
@@ -49,7 +50,7 @@ const SCHEMA_IMOVEIS = {
   },
 }
 
-export function criarServidor(repo: ImovelRepository, config: Config): FastifyInstance {
+export function criarServidor(registro: RegistroDeFontes, config: Config): FastifyInstance {
   const app = Fastify({ logger: { level: config.logLevel } })
 
   if (config.apiKey) {
@@ -106,24 +107,29 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     uptimeMs: Math.round(process.uptime() * 1000),
   }))
 
-  // Esta instância só atende o cliente configurado (config.clienteId). Um ?cliente=
-  // diferente é recusado — nunca devolver o catálogo de outro cliente. Quando o
-  // roteamento por registry/origin entrar, esta verificação dá lugar à seleção da fonte.
-  function recusaClienteIncompativel(
+  // cliente é OBRIGATÓRIO: seleciona o repo do cliente pedido no registro.
+  // Ausente → 400 CLIENTE_OBRIGATORIO; fora do registro → 400 CLIENTE_DESCONHECIDO.
+  function resolverRepo(
     cliente: string | undefined,
     reply: import("fastify").FastifyReply,
-  ): boolean {
-    if (cliente && cliente !== config.clienteId) {
-      reply.code(409).send({
-        evento: "ClienteNaoAtendido",
-        erro: {
-          codigo: "CLIENTE_NAO_ATENDIDO",
-          mensagem: `Esta instância atende o cliente '${config.clienteId}', não '${cliente}'.`,
-        },
+  ): ImovelRepository | undefined {
+    const id = (cliente ?? "").trim()
+    if (!id) {
+      reply.code(400).send({
+        evento: "Erro",
+        erro: { codigo: "CLIENTE_OBRIGATORIO", mensagem: "Parâmetro 'cliente' é obrigatório." },
       })
-      return true
+      return undefined
     }
-    return false
+    const repo = registro.obter(id)
+    if (!repo) {
+      reply.code(400).send({
+        evento: "Erro",
+        erro: { codigo: "CLIENTE_DESCONHECIDO", mensagem: `Cliente '${id}' não está registrado.` },
+      })
+      return undefined
+    }
+    return repo
   }
 
   app.get<{ Querystring: QueryImoveis }>(
@@ -131,7 +137,8 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
     { schema: SCHEMA_IMOVEIS },
     async (req: FastifyRequest<{ Querystring: QueryImoveis }>, reply) => {
       const q = req.query
-      if (recusaClienteIncompativel(q.cliente, reply)) return reply
+      const repo = resolverRepo(q.cliente, reply)
+      if (!repo) return reply
       const limit = q.limit ?? 100
       const offset = q.offset ?? 0
       const filtros: FiltrosImovel = {
@@ -161,7 +168,8 @@ export function criarServidor(repo: ImovelRepository, config: Config): FastifyIn
   )
 
   app.get<{ Params: { ref: string }; Querystring: { cliente?: string } }>("/imoveis/:ref", async (req, reply) => {
-    if (recusaClienteIncompativel(req.query.cliente, reply)) return reply
+    const repo = resolverRepo(req.query.cliente, reply)
+    if (!repo) return reply
     const coleta = await repo.buscarPorRef(req.params.ref)
     if (coleta.total === 0) {
       return reply.code(404).send({
