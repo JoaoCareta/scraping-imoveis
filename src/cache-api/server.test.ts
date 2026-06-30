@@ -7,6 +7,7 @@ function deps(over: Partial<CacheServerDeps> = {}): CacheServerDeps {
     contar: async () => 1,
     buscar: async () => [{ ref: "1" }],
     fallback: async () => ({ evento: "ColetaConcluida", origem: "scraper", total: 0, imoveis: [] }),
+    clientePadrao: "innove",
     logLevel: "silent",
     ...over,
   }
@@ -35,7 +36,7 @@ describe("cache-api server", () => {
     )
 
     // Run Test
-    const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Araçatuba" })
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&cidade=Araçatuba" })
 
     // Assert
     expect(res.json().origem).toBe("cache")
@@ -43,7 +44,7 @@ describe("cache-api server", () => {
     expect(chamouScraper).toBe(false)
   })
 
-  it("cai pro scraper quando o cache está vazio", async () => {
+  it("cai pro scraper quando o cache do cliente está vazio", async () => {
     // Mockk
     let chamouScraper = false
     const app = criarCacheServer(
@@ -57,7 +58,7 @@ describe("cache-api server", () => {
     )
 
     // Run Test
-    const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Birigui" })
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&cidade=Birigui" })
 
     // Assert
     expect(chamouScraper).toBe(true)
@@ -80,7 +81,7 @@ describe("cache-api server", () => {
     )
 
     // Run Test
-    const res = await app.inject({ method: "GET", url: "/imoveis" })
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove" })
 
     // Assert
     expect(res.statusCode).toBe(200)
@@ -98,7 +99,7 @@ describe("cache-api server", () => {
         },
       }),
     )
-    const res = await app.inject({ method: "GET", url: "/imoveis?comodidades=elevador,sacada" })
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&comodidades=elevador,sacada" })
     expect(res.statusCode).toBe(200)
     expect(filtrosRecebidos?.comodidades).toEqual(["elevador", "sacada"])
   })
@@ -114,8 +115,87 @@ describe("cache-api server", () => {
         },
       }),
     )
-    const res = await app.inject({ method: "GET", url: "/imoveis?condominio=Vila%20Madalena" })
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&condominio=Vila%20Madalena" })
     expect(res.statusCode).toBe(200)
     expect(filtrosRecebidos?.condominio).toBe("Vila Madalena")
+  })
+
+  it("escopa contagem e busca ao cliente informado (?cliente=)", async () => {
+    // Mockk
+    let clienteContado: string | undefined
+    let filtrosRecebidos: FiltrosCache | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async (clienteId) => {
+          clienteContado = clienteId
+          return 5
+        },
+        buscar: async (f) => {
+          filtrosRecebidos = f as FiltrosCache
+          return []
+        },
+      }),
+    )
+
+    // Run Test
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires&cidade=Aracatuba" })
+
+    // Assert — nada de vazar dados de outro cliente
+    expect(res.statusCode).toBe(200)
+    expect(clienteContado).toBe("caires")
+    expect(filtrosRecebidos?.clienteId).toBe("caires")
+  })
+
+  it("sem ?cliente= usa o cliente padrão (retrocompat single-tenant)", async () => {
+    // Mockk
+    let clienteContado: string | undefined
+    let filtrosRecebidos: FiltrosCache | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async (clienteId) => {
+          clienteContado = clienteId
+          return 5
+        },
+        buscar: async (f) => {
+          filtrosRecebidos = f as FiltrosCache
+          return []
+        },
+      }),
+    )
+
+    // Run Test
+    const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Aracatuba" })
+
+    // Assert
+    expect(res.statusCode).toBe(200)
+    expect(clienteContado).toBe("innove")
+    expect(filtrosRecebidos?.clienteId).toBe("innove")
+  })
+
+  it("repassa o cliente ao scraper no fallback (mesmo vindo do padrão)", async () => {
+    // Mockk
+    let queryRepassada: Record<string, string> | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async () => 0,
+        fallback: async (query) => {
+          queryRepassada = query
+          return { origem: "scraper" }
+        },
+      }),
+    )
+
+    // Run Test
+    const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Birigui" })
+
+    // Assert — o scraper precisa saber de QUEM coletar
+    expect(res.statusCode).toBe(200)
+    expect(queryRepassada?.cliente).toBe("innove")
+  })
+
+  it("sem cliente e sem padrão → 400 (multi-tenant exige cliente)", async () => {
+    const app = criarCacheServer(deps({ clientePadrao: undefined }))
+    const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Aracatuba" })
+    expect(res.statusCode).toBe(400)
   })
 })

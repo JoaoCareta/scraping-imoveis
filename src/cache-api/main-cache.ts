@@ -7,12 +7,14 @@ const HOST = process.env.HOST ?? "0.0.0.0"
 const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgres://inove:inove@postgres:5432/inove"
 const SCRAPER_URL = process.env.SCRAPER_URL ?? "http://scraper-api:3000"
+// Cliente assumido quando o request não traz ?cliente= (retrocompat single-tenant).
+const CLIENTE_PADRAO = process.env.CLIENTE_PADRAO?.trim() || "innove"
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL })
 const consulta: Consulta = (sql, params) => pool.query(sql, params)
 
 const app = criarCacheServer({
-  contar: () => contarCache(consulta),
+  contar: (clienteId) => contarCache(consulta, clienteId),
   buscar: (filtros) => buscarNoCache(consulta, filtros),
   fallback: async (query) => {
     const qs = new URLSearchParams(query).toString()
@@ -20,6 +22,7 @@ const app = criarCacheServer({
     const res = await fetch(url)
     return res.json()
   },
+  clientePadrao: CLIENTE_PADRAO,
   logLevel: process.env.LOG_LEVEL ?? "info",
 })
 

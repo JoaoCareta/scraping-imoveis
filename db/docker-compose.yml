@@ -6,8 +6,10 @@
 #     APÓS ler do scraper.
 #   - A cache-api apenas LÊ este banco.
 #
-# Rede: usa a rede do n8n (root_default) para que n8n e cache-api alcancem o banco
-# pelo nome do container (inove-postgres). Suba o n8n ANTES (ele cria root_default).
+# Rede: usa a rede compartilhada root_default para que n8n e cache-api alcancem o banco
+# pelo nome do container (inove-postgres). Essa rede é AVULSA, criada à parte
+# (NÃO é criada por nenhum compose nem pelo n8n): `docker network create root_default`.
+# Precisa já existir antes de subir este stack (external: true).
 #
 # Subir:   cd db && docker compose up -d
 # Derrubar: cd db && docker compose down   (NÃO apaga o volume de dados)
@@ -34,7 +36,8 @@ services:
     networks:
       - root_default
 
-# Rede compartilhada com o n8n. external: true → precisa já existir (suba o n8n primeiro).
+# Rede compartilhada (cross-stack) com n8n e o stack do scraper. É uma rede avulsa,
+# criada à parte: `docker network create root_default`. external: true → precisa já existir.
 networks:
   root_default:
     external: true

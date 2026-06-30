@@ -86,11 +86,33 @@ A resposta de `/imoveis` é um envelope com sabor a evento de domínio:
 
 ### Deploy (docker compose)
 
-1. `cp .env.example .env` e ajustar.
-2. `docker compose up -d --build`.
-3. A API fica acessível em `http://localhost:3000` (e na rede local, porta 3000)
-   enquanto o container correr. Confirmar com `GET http://localhost:3000/health`.
+O deploy tem **três peças**, em stacks separados, ligados por uma rede docker
+compartilhada (`root_default`):
+
+| Stack | Container(s) | Papel |
+|---|---|---|
+| `db/docker-compose.yml` | `inove-postgres` | Banco. **Grava:** n8n · **Lê:** cache-api. O scraper NÃO toca aqui. |
+| `docker-compose.yml` (raiz) | `scraper-api`, `cache-api` | `scraper-api` só **lê** da fonte (Solr), stateless. `cache-api` lê o catálogo no banco. |
+| (avulso) | `n8n` | Orquestra; **grava** no banco após ler do scraper. |
+
+**A rede `root_default` é avulsa** — não é criada por nenhum compose nem pelo n8n.
+Crie-a uma vez e ligue o n8n a ela:
+
+```bash
+docker network create root_default          # uma vez
+docker network connect root_default n8n     # liga o n8n avulso à rede (religar se recriar o n8n)
+```
+
+Depois suba os stacks (db primeiro, pois o scraper/cache dependem do banco):
+
+```bash
+cp .env.example .env                         # e ajustar
+(cd db && docker compose up -d)              # Postgres (reusa o volume de dados existente)
+docker compose up -d --build                 # scraper-api (:3000) + cache-api (:3001)
+```
+
+Confirmar: `GET http://localhost:3000/health` (scraper) e `:3001/health` (cache).
 
 Para proteger, preencher `API_KEY` no `.env` e enviar o header `x-api-key`.
-Para integrar com o n8n no mesmo host, ligar o serviço à rede docker do n8n
-(ver comentário em `docker-compose.yml`) e chamar por `http://scraper-api:3000`.
+Dentro da rede `root_default`, os serviços se alcançam pelo nome do container
+(`http://scraper-api:3000`, `inove-postgres:5432`).

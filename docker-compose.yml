@@ -9,7 +9,7 @@ services:
       - "3000:3000"
     networks:
       - default        # comunicação interna do stack (cache-api ↔ scraper-api)
-      - root_default   # rede do n8n (cross-stack)
+      - root_default   # rede compartilhada (cross-stack): n8n + postgres
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
       interval: 30s
@@ -28,24 +28,36 @@ services:
       PORT: "3001"
       DATABASE_URL: postgres://inove:inove@inove-postgres:5432/inove
       SCRAPER_URL: http://scraper-api:3000
+      # Multi-tenant: cliente assumido quando o request não traz ?cliente= (retrocompat).
+      CLIENTE_PADRAO: innove
     ports:
       - "3001:3001"
     depends_on:
       - scraper-api
     networks:
       - default        # alcança scraper-api dentro do stack
-      - root_default   # alcança o Postgres externo (inove-postgres) e o n8n
+      - root_default   # alcança o Postgres externo (inove-postgres) e o n8n na rede compartilhada
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-# Rede compartilhada com o n8n (criada pelo stack do n8n, projeto "root").
-# external: true → precisa já existir. Suba o n8n ANTES do scraper.
+# Rede compartilhada (cross-stack) entre n8n, Postgres (stack db/) e este stack.
+# É uma rede docker AVULSA, criada à parte — NÃO é criada por nenhum compose:
+#     docker network create root_default
+# external: true → precisa já existir antes de subir este stack.
+# O n8n hoje roda como container avulso (docker run, na bridge) e foi ligado a esta
+# rede com: docker network connect root_default n8n   (se recriar o n8n, religar).
 networks:
   root_default:
     external: true
 
 # A API fica acessível em http://localhost:3000 (scraper) e :3001 (cache) enquanto correr.
-# O Postgres agora é um stack à parte (db/docker-compose.yml) — o scraper não o gerencia.
+# O Postgres é um stack à parte (db/docker-compose.yml) — o scraper não o gerencia.
+#
+# Ordem de subida (do zero):
+#   docker network create root_default          # uma vez
+#   docker network connect root_default n8n     # se o n8n já existir e não estiver na rede
+#   (cd db && docker compose up -d)              # sobe o Postgres
+#   docker compose up -d                          # sobe scraper + cache

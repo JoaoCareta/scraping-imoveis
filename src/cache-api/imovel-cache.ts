@@ -4,6 +4,8 @@ import { limparTermoCondominio, escaparRegex } from "../shared/condominio-busca"
 
 /** Filtros aceites pela busca no cache (mesma convenção da API do scraper). */
 export interface FiltrosCache {
+  /** Cliente (tenant) cujo catálogo será consultado. Obrigatório: toda query é escopada. */
+  clienteId: string
   finalidade?: string
   tipoImovel?: string
   quartos?: number
@@ -22,25 +24,28 @@ export type Consulta = (
   params: unknown[],
 ) => Promise<{ rows: Array<Record<string, unknown>> }>
 
-const SQL_COUNT = "SELECT count(*)::int AS n FROM imovel"
+// Toda query é escopada por cliente_id ($1) — isolamento entre tenants e uso do
+// índice composto (cliente_id, ...) que escala para muitos clientes.
+const SQL_COUNT = "SELECT count(*)::int AS n FROM imovel WHERE cliente_id = $1"
 
 const SQL_BUSCA = `SELECT payload FROM imovel
-WHERE ($1::text IS NULL OR finalidade = $1)
-  AND ($2::text IS NULL OR tipo_imovel = $2)
-  AND ($3::int IS NULL OR quartos = $3)
-  AND ($4::numeric IS NULL OR preco >= $4)
-  AND ($5::numeric IS NULL OR preco <= $5)
-  AND ($6::text IS NULL OR unaccent(lower(cidade)) = unaccent(lower($6)))
-  AND ($7::text IS NULL OR unaccent(lower(bairro)) = unaccent(lower($7)))
-  AND ($8::jsonb IS NULL OR payload->'caracteristicas'->'comodidades' @> $8::jsonb)
-  AND ($9::text IS NULL OR unaccent(lower(concat_ws(' ',
+WHERE cliente_id = $1
+  AND ($2::text IS NULL OR finalidade = $2)
+  AND ($3::text IS NULL OR tipo_imovel = $3)
+  AND ($4::int IS NULL OR quartos = $4)
+  AND ($5::numeric IS NULL OR preco >= $5)
+  AND ($6::numeric IS NULL OR preco <= $6)
+  AND ($7::text IS NULL OR unaccent(lower(cidade)) = unaccent(lower($7)))
+  AND ($8::text IS NULL OR unaccent(lower(bairro)) = unaccent(lower($8)))
+  AND ($9::jsonb IS NULL OR payload->'caracteristicas'->'comodidades' @> $9::jsonb)
+  AND ($10::text IS NULL OR unaccent(lower(concat_ws(' ',
         payload->'localizacao'->>'condominio',
         payload->'caracteristicas'->>'titulo',
         payload->'caracteristicas'->>'descricao',
-        payload->>'urlSite'))) ~ ('\\m' || $9 || '\\M'))
+        payload->>'urlSite'))) ~ ('\\m' || $10 || '\\M'))
   AND ativo = true
 ORDER BY preco ASC NULLS LAST
-LIMIT $10`
+LIMIT $11`
 
 /** Coringas ("qualquer", "tanto faz", ...) e vazios viram NULL = sem filtro. */
 function semFiltro(valor?: string): string | null {
@@ -63,8 +68,8 @@ function condominioFiltro(valor?: string): string | null {
   return limpo == null ? null : escaparRegex(limpo)
 }
 
-export async function contarCache(consulta: Consulta): Promise<number> {
-  const r = await consulta(SQL_COUNT, [])
+export async function contarCache(consulta: Consulta, clienteId: string): Promise<number> {
+  const r = await consulta(SQL_COUNT, [clienteId])
   const n = r.rows[0]?.n
   return typeof n === "number" ? n : 0
 }
@@ -74,6 +79,7 @@ export async function buscarNoCache(
   f: FiltrosCache,
 ): Promise<RecursoImovel[]> {
   const params: unknown[] = [
+    f.clienteId,
     semFiltro(f.finalidade),
     semFiltro(f.tipoImovel),
     f.quartos ?? null,

@@ -2,16 +2,19 @@ import Fastify, { FastifyInstance } from "fastify"
 import { FiltrosCache } from "./imovel-cache"
 
 export interface CacheServerDeps {
-  /** Conta quantos imóveis há no cache. */
-  contar: () => Promise<number>
-  /** Busca no cache com os filtros. */
+  /** Conta quantos imóveis há no cache DO CLIENTE (escopo multi-tenant). */
+  contar: (clienteId: string) => Promise<number>
+  /** Busca no cache com os filtros (já escopados por filtros.clienteId). */
   buscar: (filtros: FiltrosCache) => Promise<unknown[]>
   /** Fallback ao scraper quando o cache está vazio ou indisponível. */
   fallback: (query: Record<string, string>) => Promise<unknown>
+  /** Cliente assumido quando o request não traz ?cliente= (retrocompat single-tenant). */
+  clientePadrao?: string
   logLevel?: string
 }
 
 interface QueryImoveis {
+  cliente?: string
   finalidade?: string
   tipoImovel?: string
   quartos?: string
@@ -48,12 +51,19 @@ export function criarCacheServer(deps: CacheServerDeps): FastifyInstance {
 
   app.get("/health", async () => ({ status: "ok", servico: "cache-api" }))
 
-  app.get<{ Querystring: QueryImoveis }>("/imoveis", async (req) => {
+  app.get<{ Querystring: QueryImoveis }>("/imoveis", async (req, reply) => {
     const q = req.query
+    const cliente = (q.cliente ?? "").trim() || deps.clientePadrao
+    if (!cliente) {
+      return reply
+        .code(400)
+        .send({ evento: "Erro", erro: { codigo: "CLIENTE_OBRIGATORIO", mensagem: "Parâmetro 'cliente' é obrigatório." } })
+    }
     try {
-      const total = await deps.contar()
+      const total = await deps.contar(cliente)
       if (total > 0) {
         const filtros: FiltrosCache = {
+          clienteId: cliente,
           finalidade: q.finalidade,
           tipoImovel: q.tipoImovel,
           quartos: numero(q.quartos),
@@ -78,7 +88,8 @@ export function criarCacheServer(deps: CacheServerDeps): FastifyInstance {
       // Cache indisponível (ex.: Postgres down) → não derruba o atendimento, cai pro scraper.
       req.log.warn({ err: erro }, "cache indisponível; usando fallback do scraper")
     }
-    return deps.fallback(apenasPreenchidos(q))
+    // Garante que o scraper saiba de QUEM coletar, mesmo quando o cliente veio do padrão.
+    return deps.fallback({ ...apenasPreenchidos(q), cliente })
   })
 
   return app
