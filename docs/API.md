@@ -32,24 +32,24 @@ O resto do guia escreve `BASE`; substitui pelo endereço certo conforme **onde c
 ## 2. Cliente (multi-tenant) — qual passar e porquê
 
 A plataforma serve **vários clientes**. O parâmetro `cliente` identifica **de quem** é o
-catálogo a consultar. O valor é o identificador do cliente, definido na configuração da
-instância (env `CLIENTE_ID`). Hoje:
+catálogo a consultar. O valor é o identificador do cliente, definido no env **`CLIENTES`**
+do scraper. Hoje:
 
 | `cliente` | Quem | Plataforma da fonte |
 |---|---|---|
 | `innove` | Imobiliária Innove | MoldSystems (default) |
 | `caires` | Caires Engimob | Kenlo |
 
-> ⚠️ O `cliente` **não escolhe a URL/site** a coletar — isso é fixo por instância (env
-> `ORIGIN` / `PLATAFORMA`). O `cliente` apenas diz **de quem** é o catálogo. Cada instância
-> serve **um** cliente.
+> O `cliente` diz **de quem** é o catálogo. No **scraper-api** ele **seleciona a fonte** do
+> cliente (plataforma/origin definidos no env `CLIENTES`); na **cache-api** seleciona o tenant
+> lido do banco. **Um único scraper atende todos os clientes.**
 
 **O `cliente` comporta-se diferente em cada serviço:**
 
 | Serviço | Porta | Papel | Comportamento do `cliente` |
 |---|---|---|---|
 | **cache-api** | `3001` | Catálogo multi-tenant (lê do banco; cai para o scraper se vazio). **É por aqui que o n8n entra.** | `?cliente=` **escolhe** o catálogo do tenant. Se omitido, assume o `CLIENTE_PADRAO` da instância (hoje `innove`). |
-| **scraper-api** | `3000` | Coleta ao vivo do site, stateless. | `?cliente=` é só um **guard**: se diferente do cliente da instância, devolve `409`. Se omitido, serve o cliente da própria instância. |
+| **scraper-api** | `3000` | Coleta ao vivo do site, stateless. Conhece todos os clientes (env `CLIENTES`). | `?cliente=` **obrigatório** — seleciona a fonte daquele cliente. Ausente ou fora do registro → `400`. |
 
 **Regra prática para o n8n** (entra pela cache-api `:3001`):
 - Fluxo do **caires** → **tem de** enviar `cliente=caires`. Sem isso, a cache-api assume
@@ -198,9 +198,8 @@ Nó **HTTP Request**:
 
 | Código | Significado | Causa típica |
 |---|---|---|
-| `400` | pedido inválido | filtro fora do permitido (`finalidade=XPTO`, `limit` fora de 1–500); ou `cliente` em falta sem `CLIENTE_PADRAO` (cache-api) |
+| `400` | pedido inválido / cliente | filtro fora do permitido (`finalidade=XPTO`, `limit` fora de 1–500); `cliente` ausente (`CLIENTE_OBRIGATORIO`) ou fora do registro (`CLIENTE_DESCONHECIDO`) na scraper-api |
 | `404` | não encontrado | `GET /imoveis/{ref}` com referência inexistente |
-| `409` | cliente não atendido | `?cliente=` diferente do cliente desta instância (guard da scraper-api) |
 | `503` | fonte indisponível | o site de origem não respondeu |
 | `504` | timeout da fonte | o site demorou demais |
 | `401` | não autorizado | (só se a `API_KEY` estiver ativada) header `x-api-key` em falta/errado |
