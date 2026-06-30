@@ -76,13 +76,16 @@ export function criarCacheServer(deps: CacheServerDeps): FastifyInstance {
           limit: numero(q.limit) ?? 10,
         }
         const imoveis = await deps.buscar(filtros)
-        return {
-          evento: "ColetaConcluida",
-          origem: "cache",
-          total: imoveis.length,
-          limit: filtros.limit,
-          imoveis,
+        if (imoveis.length > 0) {
+          return {
+            evento: "ColetaConcluida",
+            origem: "cache",
+            total: imoveis.length,
+            limit: filtros.limit,
+            imoveis,
+          }
         }
+        // cache populado mas 0 para estes filtros → cai pro fallback (scraper) com os filtros
       }
     } catch (erro) {
       // Cache indisponível (ex.: Postgres down) → não derruba o atendimento, cai pro scraper.

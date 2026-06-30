@@ -198,4 +198,22 @@ describe("cache-api server", () => {
     const res = await app.inject({ method: "GET", url: "/imoveis?cidade=Aracatuba" })
     expect(res.statusCode).toBe(400)
   })
+
+  it("cache populado mas 0 para os filtros → cai pro scraper com os filtros", async () => {
+    let queryRepassada: Record<string, string> | undefined
+    const app = criarCacheServer(
+      deps({
+        contar: async () => 500, // o cliente TEM imóveis
+        buscar: async () => [], // mas 0 para estes filtros
+        fallback: async (query) => {
+          queryRepassada = query
+          return { evento: "ColetaConcluida", origem: "scraper", total: 0, imoveis: [] }
+        },
+      }),
+    )
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=caires&tipoImovel=casa" })
+    expect(res.json().origem).toBe("scraper") // NÃO veio do cache
+    expect(queryRepassada?.cliente).toBe("caires") // scraper recebeu o cliente
+    expect(queryRepassada?.tipoImovel).toBe("casa") // e os filtros
+  })
 })
