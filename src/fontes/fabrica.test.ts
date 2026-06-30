@@ -2,22 +2,22 @@ import { describe, it, expect } from "vitest"
 import { criarFonte, parsearSeeds } from "./fabrica"
 import { MoldSystemsFonte } from "./moldsystems/moldsystems-fonte"
 import { KenloFonte } from "./kenlo/kenlo-fonte"
-import { Config } from "../config"
+import { ClienteConfig } from "../config"
 
-const base: Config = {
-  port: 3000, host: "0.0.0.0", clienteId: "x", origin: "https://x", solrNumRows: 5000,
-  fetchTimeoutMs: 8000, logLevel: "silent", plataforma: "moldsystems", estrategia: "html",
+const base: ClienteConfig = {
+  id: "x", plataforma: "moldsystems", estrategia: "html", origin: "https://x", solrNumRows: 5000,
 }
+const infra = { fetchTimeoutMs: 8000 }
 
 describe("criarFonte", () => {
   it("plataforma moldsystems → MoldSystemsFonte", () => {
-    expect(criarFonte({ ...base, plataforma: "moldsystems" })).toBeInstanceOf(MoldSystemsFonte)
+    expect(criarFonte({ ...base, plataforma: "moldsystems" }, infra)).toBeInstanceOf(MoldSystemsFonte)
   })
   it("plataforma kenlo → KenloFonte", () => {
-    expect(criarFonte({ ...base, plataforma: "kenlo", origin: "https://www.cairesengimob.com.br" })).toBeInstanceOf(KenloFonte)
+    expect(criarFonte({ ...base, plataforma: "kenlo", origin: "https://www.cairesengimob.com.br" }, infra)).toBeInstanceOf(KenloFonte)
   })
   it("plataforma kenlo + estrategia api → falha-rápido (ColetaApiKenlo não implementada)", () => {
-    expect(() => criarFonte({ ...base, plataforma: "kenlo", estrategia: "api", origin: "https://www.cairesengimob.com.br" })).toThrow(/não implementada/)
+    expect(() => criarFonte({ ...base, plataforma: "kenlo", estrategia: "api", origin: "https://www.cairesengimob.com.br" }, infra)).toThrow(/não implementada/)
   })
 })
 

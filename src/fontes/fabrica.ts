@@ -1,4 +1,4 @@
-import { Config } from "../config"
+import { ClienteConfig } from "../config"
 import { FonteDeImoveis } from "./fonte-de-imoveis"
 import { MoldSystemsFonte } from "./moldsystems/moldsystems-fonte"
 import { KenloFonte } from "./kenlo/kenlo-fonte"
@@ -34,25 +34,25 @@ export function parsearSeeds(csv: string): SeedListagem[] {
 }
 
 /** Único lugar que conhece o mapa plataforma → classe de fonte. */
-export function criarFonte(config: Config): FonteDeImoveis {
-  if (config.plataforma === "kenlo") {
-    if (config.estrategia === "api") {
+export function criarFonte(cliente: ClienteConfig, infra: { fetchTimeoutMs: number }): FonteDeImoveis {
+  if (cliente.plataforma === "kenlo") {
+    if (cliente.estrategia === "api") {
       throw new Error("ESTRATEGIA=api (ColetaApiKenlo) ainda não implementada para a plataforma kenlo")
     }
     const estrategia = new ColetaHtmlKenlo({
-      origin: config.origin,
-      timeoutMs: config.fetchTimeoutMs,
-      seeds: config.kenloSeeds ? parsearSeeds(config.kenloSeeds) : SEEDS_KENLO,
-      maxPaginas: config.kenloMaxPaginas,
+      origin: cliente.origin,
+      timeoutMs: infra.fetchTimeoutMs,
+      seeds: cliente.kenloSeeds ? parsearSeeds(cliente.kenloSeeds) : SEEDS_KENLO,
+      maxPaginas: cliente.kenloMaxPaginas,
       avisar: (msg) => console.warn(msg),
     })
-    return new KenloFonte({ origin: config.origin, clienteId: config.clienteId, estrategia })
+    return new KenloFonte({ origin: cliente.origin, clienteId: cliente.id, estrategia })
   }
   return new MoldSystemsFonte({
-    origin: config.origin,
-    clienteId: config.clienteId,
-    numRows: config.solrNumRows,
-    timeoutMs: config.fetchTimeoutMs,
+    origin: cliente.origin,
+    clienteId: cliente.id,
+    numRows: cliente.solrNumRows,
+    timeoutMs: infra.fetchTimeoutMs,
     avisar: (msg) => console.warn(msg),
   })
 }

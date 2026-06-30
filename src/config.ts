@@ -1,3 +1,13 @@
+export interface ClienteConfig {
+  id: string
+  plataforma: "moldsystems" | "kenlo"
+  estrategia: "html" | "api"
+  origin: string
+  solrNumRows: number
+  kenloSeeds?: string
+  kenloMaxPaginas?: number
+}
+
 export interface Config {
   port: number
   host: string

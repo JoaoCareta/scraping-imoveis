@@ -1,11 +1,16 @@
 import { FastifyInstance } from "fastify"
-import { carregarConfig, Config } from "./config"
+import { carregarConfig, Config, ClienteConfig } from "./config"
 import { criarFonte } from "./fontes/fabrica"
 import { FonteImovelRepository } from "./aplicacao/fonte-imovel-repository"
 import { criarServidor } from "./api/server"
 
 export function construirApp(config: Config): FastifyInstance {
-  const fonte = criarFonte(config)
+  const cliente: ClienteConfig = {
+    id: config.clienteId, plataforma: config.plataforma, estrategia: config.estrategia,
+    origin: config.origin, solrNumRows: config.solrNumRows,
+    kenloSeeds: config.kenloSeeds, kenloMaxPaginas: config.kenloMaxPaginas,
+  }
+  const fonte = criarFonte(cliente, { fetchTimeoutMs: config.fetchTimeoutMs })
   const repo = new FonteImovelRepository({ fonte })
   return criarServidor(repo, config)
 }
