@@ -94,3 +94,41 @@ export async function buscarNoCache(
   const r = await consulta(SQL_BUSCA, params)
   return r.rows.map((row) => row.payload as RecursoImovel)
 }
+
+const SQL_DELETE_CLIENTE = "DELETE FROM imovel WHERE cliente_id = $1"
+
+const SQL_UPSERT = `INSERT INTO imovel
+  (cliente_id, ref, finalidade, tipo_imovel, quartos, preco, cidade, bairro, ativo, payload)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+ON CONFLICT (cliente_id, ref, finalidade) DO UPDATE SET
+  tipo_imovel = EXCLUDED.tipo_imovel, quartos = EXCLUDED.quartos, preco = EXCLUDED.preco,
+  cidade = EXCLUDED.cidade, bairro = EXCLUDED.bairro, ativo = EXCLUDED.ativo,
+  payload = EXCLUDED.payload, sincronizado_em = now()`
+
+/**
+ * Substitui o catálogo do cliente DENTRO de uma transação (`tx`): apaga as linhas
+ * do cliente e reinsere as novas. Devolve quantos imóveis foram inseridos.
+ * O ciclo de transação (BEGIN/COMMIT/ROLLBACK + client do pool) é do chamador.
+ */
+export async function substituirCatalogoTx(
+  tx: Consulta,
+  cliente: string,
+  imoveis: RecursoImovel[],
+): Promise<number> {
+  await tx(SQL_DELETE_CLIENTE, [cliente])
+  for (const im of imoveis) {
+    await tx(SQL_UPSERT, [
+      cliente,
+      im.ref,
+      im.finalidade,
+      im.caracteristicas.tipoImovel ?? null,
+      im.caracteristicas.quartos ?? null,
+      im.preco?.valor ?? null,
+      im.localizacao.cidade ?? null,
+      im.localizacao.bairro ?? null,
+      im.estado.ativo,
+      JSON.stringify(im),
+    ])
+  }
+  return imoveis.length
+}
