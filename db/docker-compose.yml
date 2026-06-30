@@ -4,7 +4,7 @@
 #   - O scraper-api SÓ LÊ imóveis da fonte (Solr). Não toca neste banco.
 #   - O n8n é quem GRAVA aqui (cache do catálogo + conversas + avaliações),
 #     APÓS ler do scraper.
-#   - A cache-api apenas LÊ este banco.
+#   - A cache-api LÊ este banco (e ESCREVE no warm-up de boot — pre-load de clientes).
 #
 # Rede: usa a rede compartilhada root_default para que n8n e cache-api alcancem o banco
 # pelo nome do container (inove-postgres). Essa rede é AVULSA, criada à parte

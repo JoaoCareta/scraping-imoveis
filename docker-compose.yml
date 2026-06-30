@@ -30,6 +30,8 @@ services:
       SCRAPER_URL: http://scraper-api:3000
       # Multi-tenant: cliente assumido quando o request não traz ?cliente= (retrocompat).
       CLIENTE_PADRAO: innove
+      # Warm-up no boot: pré-carrega o catálogo destes clientes (CSV). Vazio = nenhum.
+      PRELOAD_CLIENTES: caires
     ports:
       - "3001:3001"
     depends_on:
