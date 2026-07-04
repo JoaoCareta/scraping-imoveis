@@ -6,10 +6,21 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "3000:3000"
+      - "3000:3000"   # acesso direto pelo IP:porta (a entrada oficial é o Traefik; ver labels)
     networks:
-      - default        # comunicação interna do stack (cache-api ↔ scraper-api)
-      - root_default   # rede compartilhada (cross-stack): n8n + postgres
+      - default            # comunicação interna do stack (cache-api ↔ scraper-api)
+      - n8n-ww9q_default   # rede compartilhada (cross-stack): n8n, traefik e o postgres (stack db/)
+    # Roteamento público via Traefik (stack em /docker/traefik na VPS; roda em rede host,
+    # com exposedbydefault=false → só roteia quem declara traefik.enable=true).
+    # traefik.docker.network diz por QUAL rede o Traefik alcança este container.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n-ww9q_default"
+      - "traefik.http.routers.scraper.rule=Host(`scraper.srv1800774.hstgr.cloud`)"
+      - "traefik.http.routers.scraper.entrypoints=websecure"
+      - "traefik.http.routers.scraper.tls=true"
+      - "traefik.http.routers.scraper.tls.certresolver=letsencrypt"
+      - "traefik.http.services.scraper.loadbalancer.server.port=3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
       interval: 30s
@@ -18,7 +29,7 @@ services:
 
   # API de leitura com cache: LÊ o catálogo no Postgres; cai pro scraper só se vazio.
   # O Postgres NÃO faz parte deste stack — vive em db/docker-compose.yml e é alcançado
-  # pela rede root_default, pelo nome do container (inove-postgres).
+  # pela rede n8n-ww9q_default, pelo nome do container (inove-postgres).
   cache-api:
     build: .
     container_name: cache-api
@@ -33,33 +44,42 @@ services:
       # Warm-up no boot: pré-carrega o catálogo destes clientes (CSV). Vazio = nenhum.
       PRELOAD_CLIENTES: caires
     ports:
-      - "3001:3001"
+      - "3001:3001"   # acesso direto pelo IP:porta (a entrada oficial é o Traefik; ver labels)
     depends_on:
       - scraper-api
     networks:
-      - default        # alcança scraper-api dentro do stack
-      - root_default   # alcança o Postgres externo (inove-postgres) e o n8n na rede compartilhada
+      - default            # alcança scraper-api dentro do stack
+      - n8n-ww9q_default   # alcança o n8n, o traefik e o Postgres externo (inove-postgres)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n-ww9q_default"
+      - "traefik.http.routers.cache.rule=Host(`cache.srv1800774.hstgr.cloud`)"
+      - "traefik.http.routers.cache.entrypoints=websecure"
+      - "traefik.http.routers.cache.tls=true"
+      - "traefik.http.routers.cache.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cache.loadbalancer.server.port=3001"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-# Rede compartilhada (cross-stack) entre n8n, Postgres (stack db/) e este stack.
-# É uma rede docker AVULSA, criada à parte — NÃO é criada por nenhum compose:
-#     docker network create root_default
-# external: true → precisa já existir antes de subir este stack.
-# O n8n hoje roda como container avulso (docker run, na bridge) e foi ligado a esta
-# rede com: docker network connect root_default n8n   (se recriar o n8n, religar).
+# Rede compartilhada (cross-stack) com o n8n, o Traefik e o stack db/. Ela é criada
+# pelo stack do n8n (/docker/n8n-ww9q na VPS) — para ESTE compose ela é externa:
+# precisa já existir antes de subir. Se o stack do n8n for recriado com outro nome,
+# a rede muda de nome e é preciso ajustar aqui, no db/ e nos labels traefik.docker.network.
 networks:
-  root_default:
+  n8n-ww9q_default:
     external: true
 
-# A API fica acessível em http://localhost:3000 (scraper) e :3001 (cache) enquanto correr.
+# Acesso:
+#   https://scraper.srv1800774.hstgr.cloud → scraper-api (via Traefik, TLS automático)
+#   https://cache.srv1800774.hstgr.cloud   → cache-api   (via Traefik, TLS automático)
+#   http://IP:3000 / http://IP:3001        → acesso direto (portas publicadas no host)
 # O Postgres é um stack à parte (db/docker-compose.yml) — o scraper não o gerencia.
 #
-# Ordem de subida (do zero):
-#   docker network create root_default          # uma vez
-#   docker network connect root_default n8n     # se o n8n já existir e não estiver na rede
-#   (cd db && docker compose up -d)              # sobe o Postgres
-#   docker compose up -d                          # sobe scraper + cache
+# Ordem de subida (na VPS srv1800774, do zero):
+#   1. stack do traefik  (/docker/traefik)   — proxy reverso, provisionado pela Hostinger
+#   2. stack do n8n      (/docker/n8n-ww9q)  — cria a rede n8n-ww9q_default
+#   3. (cd db && docker compose up -d)       — sobe o Postgres
+#   4. docker compose up -d --build          — sobe scraper + cache (SEM --build reusa imagem velha)

@@ -84,35 +84,52 @@ A resposta de `/imoveis` é um envelope com sabor a evento de domínio:
 { "evento": "ColetaConcluida", "extraidoEm": "...", "total": 42, "rejeitados": 3, "imoveis": [ /* RecursoImovel */ ] }
 ```
 
-### Deploy (docker compose)
+### Deploy (VPS Hostinger · docker compose + Traefik)
 
-O deploy tem **três peças**, em stacks separados, ligados por uma rede docker
-compartilhada (`root_default`):
+Tudo roda numa única VPS (`srv1800774.hstgr.cloud`), em stacks separados ligados
+pela rede docker `n8n-ww9q_default` (criada pelo stack do n8n):
 
-| Stack | Container(s) | Papel |
-|---|---|---|
-| `db/docker-compose.yml` | `inove-postgres` | Banco. **Grava:** n8n · **Lê:** cache-api. O scraper NÃO toca aqui. |
-| `docker-compose.yml` (raiz) | `scraper-api`, `cache-api` | `scraper-api` só **lê** da fonte (Solr), stateless. `cache-api` lê o catálogo no banco. |
-| (avulso) | `n8n` | Orquestra; **grava** no banco após ler do scraper. |
+| Stack | Onde vive (VPS) | Container(s) | Papel |
+|---|---|---|---|
+| traefik | `/docker/traefik` | `traefik-traefik-1` | Proxy reverso (rede host). TLS via Let's Encrypt; só roteia quem tem `traefik.enable=true`. |
+| n8n | `/docker/n8n-ww9q` | `n8n-ww9q-n8n-1` | Orquestra; **grava** no banco após ler do scraper. Cria a rede compartilhada. |
+| este repo | `/root/scraping-imoveis` | `scraper-api`, `cache-api` | `scraper-api` só **lê** da fonte (Solr), stateless. `cache-api` lê o catálogo no banco. |
+| `db/docker-compose.yml` | (pendente na VPS nova) | `inove-postgres` | Banco. **Grava:** n8n · **Lê:** cache-api. O scraper NÃO toca aqui. |
 
-**A rede `root_default` é avulsa** — não é criada por nenhum compose nem pelo n8n.
-Crie-a uma vez e ligue o n8n a ela:
+Rotas públicas (via Traefik, HTTPS automático):
 
-```bash
-docker network create root_default          # uma vez
-docker network connect root_default n8n     # liga o n8n avulso à rede (religar se recriar o n8n)
-```
+- `https://scraper.srv1800774.hstgr.cloud` → `scraper-api` (porta interna 3000)
+- `https://cache.srv1800774.hstgr.cloud` → `cache-api` (porta interna 3001)
 
-Depois suba os stacks (db primeiro, pois o scraper/cache dependem do banco):
+Primeira instalação na VPS (uma vez só):
 
 ```bash
-cp .env.example .env                         # e ajustar
-(cd db && docker compose up -d)              # Postgres (reusa o volume de dados existente)
-docker compose up -d --build                 # scraper-api (:3000) + cache-api (:3001)
+cd /root/scraping-imoveis
+cp .env.example .env                         # e ajustar (API_KEY, CLIENTES…)
+(cd db && docker compose up -d)              # Postgres (pendente: ainda não sobe na VPS nova)
+docker compose up -d --build
 ```
 
-Confirmar: `GET http://localhost:3000/health` (scraper) e `:3001/health` (cache).
+Atualizar (rotina — NÃO repetir o `cp`, ele sobrescreveria o `.env` real):
 
-Para proteger, preencher `API_KEY` no `.env` e enviar o header `x-api-key`.
-Dentro da rede `root_default`, os serviços se alcançam pelo nome do container
+```bash
+cd /root/scraping-imoveis
+git pull
+docker compose up -d --build                 # SEM --build o compose reusa a imagem velha
+```
+
+> Nota (só na primeira atualização após a migração p/ Traefik): o compose da VPS
+> tinha edições locais não commitadas; a versão do repo já incorpora 100% delas.
+> Se o `git pull` reclamar de "local changes would be overwritten", descarte-as
+> antes: `git checkout -- docker-compose.yml`.
+
+Confirmar: `curl https://scraper.srv1800774.hstgr.cloud/health` e
+`https://cache.srv1800774.hstgr.cloud/health` (ou, direto no host, `:3000` / `:3001`).
+
+Autenticação: preencher `API_KEY` no `.env` protege **apenas o scraper-api**
+(header `x-api-key`). A **cache-api não tem autenticação** — as rotas públicas dela
+ficam abertas — e as chamadas internas dela ao scraper não enviam `x-api-key`;
+ou seja, ativar a `API_KEY` hoje quebra o warm-up e o fallback cache-miss até a
+cache-api ganhar suporte à chave.
+Dentro da rede `n8n-ww9q_default`, os serviços se alcançam pelo nome do container
 (`http://scraper-api:3000`, `inove-postgres:5432`).
