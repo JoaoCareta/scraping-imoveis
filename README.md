@@ -110,18 +110,23 @@ cp .env.example .env                         # e ajustar (API_KEY, CLIENTES…)
 docker compose up -d --build
 ```
 
-Atualizar (rotina — NÃO repetir o `cp`, ele sobrescreveria o `.env` real):
+Atualizar (rotina): **automático** — todo push na `main` dispara o workflow
+[deploy-vps](.github/workflows/deploy.yml), que conecta na VPS por SSH, faz
+`git reset --hard origin/main` (o clone lá é só de deploy; o `.env` é gitignorado
+e sobrevive) e roda [scripts/deploy.sh](scripts/deploy.sh) — build + espera os
+`/health` (direto e via Traefik) responderem 200. Se o código novo não ficar
+saudável, o workflow faz **rollback** para o commit anterior e o run fica vermelho.
+Requer 2 secrets no GitHub (Settings → Secrets and variables → Actions):
+`VPS_SSH_KEY` (chave privada de deploy) e `VPS_SSH_FINGERPRINT` (host key da VPS)
+— como gerá-los está no cabeçalho do próprio workflow.
+
+Deploy manual (fallback, ou se o Actions estiver fora):
 
 ```bash
 cd /root/scraping-imoveis
-git pull
-docker compose up -d --build                 # SEM --build o compose reusa a imagem velha
+git fetch origin main && git reset --hard origin/main
+bash scripts/deploy.sh                       # NÃO repetir o cp do .env — sobrescreveria o real
 ```
-
-> Nota (só na primeira atualização após a migração p/ Traefik): o compose da VPS
-> tinha edições locais não commitadas; a versão do repo já incorpora 100% delas.
-> Se o `git pull` reclamar de "local changes would be overwritten", descarte-as
-> antes: `git checkout -- docker-compose.yml`.
 
 Confirmar: `curl https://scraper.srv1800774.hstgr.cloud/health` e
 `https://cache.srv1800774.hstgr.cloud/health` (ou, direto no host, `:3000` / `:3001`).

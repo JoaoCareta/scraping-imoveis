@@ -1,0 +1,59 @@
+# Deploy automático: todo push na main conecta na VPS por SSH e roda o deploy.
+# Se o código novo não ficar saudável, faz ROLLBACK para o commit anterior.
+#
+# Requer 2 secrets (Settings → Secrets and variables → Actions):
+#   VPS_SSH_KEY         — chave privada ed25519 cujo par público está em
+#                         ~/.ssh/authorized_keys do root na VPS
+#   VPS_SSH_FINGERPRINT — host key da VPS (anti-MITM); obter na VPS com:
+#                         ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+#                         (usar só o trecho "SHA256:...")
+name: deploy-vps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}   # permite disparar à mão pela aba Actions
+
+concurrency:
+  group: deploy-vps       # serializa deploys; um push atrás do outro não corre em paralelo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checar secrets de deploy
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          FP: ${{ secrets.VPS_SSH_FINGERPRINT }}
+        run: |
+          err=0
+          [ -n "$KEY" ] || { echo "::error::secret VPS_SSH_KEY ausente — criar em Settings → Secrets and variables → Actions"; err=1; }
+          [ -n "$FP" ]  || { echo "::error::secret VPS_SSH_FINGERPRINT ausente — na VPS: ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"; err=1; }
+          exit $err
+
+      # Action de terceiro que recebe a chave de root da VPS → pinada por SHA de
+      # commit (tag v1 é mutável; supply-chain). Ao atualizar, trocar o SHA junto.
+      - name: Deploy via SSH (com rollback)
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: 187.127.46.68
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /root/scraping-imoveis
+            ANTERIOR=$(git rev-parse HEAD)
+            git fetch origin main
+            # O clone da VPS é só de deploy: origin/main é autoritativo.
+            # (.env é gitignorado e sobrevive; edições locais em arquivos versionados são descartadas.)
+            git reset --hard origin/main
+            if ! bash scripts/deploy.sh; then
+              echo "deploy de origin/main falhou — rollback para $ANTERIOR"
+              git reset --hard "$ANTERIOR"
+              bash scripts/deploy.sh
+              echo "rollback ok — produção de volta em $ANTERIOR; o run fica vermelho de propósito"
+              exit 1
+            fi
