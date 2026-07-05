@@ -21,11 +21,11 @@ O resto do guia escreve `BASE`; substitui pelo endereço certo conforme **onde c
 > Porquê? Dentro do container do n8n, `localhost` é o **próprio** n8n, não o PC. Por isso
 > usa-se `host.docker.internal` (Docker Desktop) para chegar ao PC onde a API está publicada.
 
-> **Dois serviços, duas portas.** A tabela acima usa a porta `3000` (**scraper-api**, coleta
-> ao vivo). Há também a **cache-api** na porta `3001` — o ponto de entrada **multi-tenant** que
-> o n8n usa no dia-a-dia (lê o catálogo do banco e cai para o scraper se estiver vazio). O
-> **host** (`localhost` / `host.docker.internal` / nome do container) resolve-se da mesma
-> forma; muda só a porta (`3001`) e o nome do serviço na rede docker (`cache-api`). Ver **§2**.
+> **Um serviço só.** A antiga **cache-api** (`:3001`) foi removida: o **cache agora é do
+> n8n**, que consulta a tabela `imovel` no Postgres e só chama a scraper-api no miss (catálogo
+> vazio/velho) e no sync agendado ([SYNC] Catalogo imoveis, a cada 30 min). Toda chamada
+> HTTP deste guia é à **scraper-api** (`:3000`), que faz **coleta ao vivo** — é lenta por
+> natureza (segundos a minutos); o dia-a-dia do bot passa pelo banco, não por aqui.
 
 ---
 
@@ -40,28 +40,20 @@ do scraper. Hoje:
 | `innove` | Imobiliária Innove | MoldSystems (default) |
 | `caires` | Caires Engimob | Kenlo |
 
-> O `cliente` diz **de quem** é o catálogo. No **scraper-api** ele **seleciona a fonte** do
-> cliente (plataforma/origin definidos no env `CLIENTES`); na **cache-api** seleciona o tenant
-> lido do banco. **Um único scraper atende todos os clientes.**
+> O `cliente` diz **de quem** é o catálogo: ele **seleciona a fonte** do cliente
+> (plataforma/origin definidos no env `CLIENTES`). **Um único scraper atende todos os
+> clientes.** `?cliente=` é **obrigatório** — ausente ou fora do registro → `400`
+> (`CLIENTE_OBRIGATORIO` / `CLIENTE_DESCONHECIDO`).
 
-**O `cliente` comporta-se diferente em cada serviço:**
-
-| Serviço | Porta | Papel | Comportamento do `cliente` |
-|---|---|---|---|
-| **cache-api** | `3001` | Catálogo multi-tenant (lê do banco; cai para o scraper se vazio). **É por aqui que o n8n entra.** | `?cliente=` **escolhe** o catálogo do tenant. Se omitido, assume o `CLIENTE_PADRAO` da instância (hoje `innove`). |
-| **scraper-api** | `3000` | Coleta ao vivo do site, stateless. Conhece todos os clientes (env `CLIENTES`). | `?cliente=` **obrigatório** — seleciona a fonte daquele cliente. Ausente ou fora do registro → `400`. |
-
-**Regra prática para o n8n** (entra pela cache-api `:3001`):
-- Fluxo do **caires** → **tem de** enviar `cliente=caires`. Sem isso, a cache-api assume
-  `innove` e devolve o catálogo **errado**.
-- Fluxo do **innove** → pode omitir (assume `innove`), mas o recomendado é enviar
-  `cliente=innove` **explícito**.
+**Regra prática para o n8n:**
+- **Toda** chamada (e todo SELECT/INSERT no banco) leva o cliente explícito: `caires` ou
+  `innove`. Não existe mais default (`CLIENTE_PADRAO` morreu com a cache-api).
 - O mesmo `cliente` tem de ser usado também ao **gravar no banco** (`cliente_id` em
   `imovel` / `conversa_evento` / `avaliacao_conversa`), senão o tenant desalinha.
 
 Exemplo (caires; venda; 3 quartos; até R$800.000; em Araçatuba):
 ```
-GET  http://cache-api:3001/imoveis?cliente=caires&finalidade=VENDA&quartos=3&precoMax=800000&cidade=Aracatuba
+GET  http://scraper-api:3000/imoveis?cliente=caires&finalidade=VENDA&quartos=3&precoMax=800000&cidade=Ara%C3%A7atuba
 ```
 
 ---
@@ -89,7 +81,7 @@ GET  BASE/imoveis?cliente=innove&finalidade=ALUGUER&tipoImovel=apartamento&preco
 
 | Filtro | Tipo | Valores | O que faz |
 |---|---|---|---|
-| `cliente` | texto | `innove`, `caires` | **de quem** é o catálogo (ver §2). Na cache-api **escolhe** o tenant; na scraper-api é **guard**. |
+| `cliente` | texto | `innove`, `caires` | **obrigatório** — seleciona a fonte do cliente (ver §2); ausente/desconhecido → `400` |
 | `finalidade` | enum | `ALUGUER` ou `VENDA` | tipo de operação |
 | `precoMin` | número | ex. `1000` | preço **≥** ao valor |
 | `precoMax` | número | ex. `2500` | preço **≤** ao valor |
@@ -100,7 +92,7 @@ GET  BASE/imoveis?cliente=innove&finalidade=ALUGUER&tipoImovel=apartamento&preco
 | `comodidades` | texto | CSV de slugs, ex. `piscina,portaria` | imóvel tem **todas** as comodidades indicadas |
 | `condominio` | texto | nome do condomínio | filtra por nome de condomínio/empreendimento |
 | `ativo` | booleano | `true` / `false` (default `true`) | por defeito só traz imóveis ativos |
-| `limit` | inteiro | `1`–`500` (default `100`) | quantos imóveis por página |
+| `limit` | inteiro | `1`–`5000` (default `100`) | quantos imóveis por página (o sync do n8n usa `5000` p/ puxar o catálogo inteiro) |
 | `offset` | inteiro | `≥ 0` (default `0`) | a partir de que posição |
 
 **Cidades no catálogo** (exemplos reais): `Araçatuba`, `Birigui`, `Guararapes`, `Rubiacea`,
@@ -124,8 +116,8 @@ GET BASE/imoveis?finalidade=VENDA&limit=100&offset=100   → seguintes 100
 GET BASE/imoveis?finalidade=VENDA&limit=100&offset=200   → ...
 ```
 
-> A paginação por `offset` é da **scraper-api** (`:3000`). A **cache-api** (`:3001`) usa só
-> `limit`; o catálogo é o do tenant indicado em `cliente`.
+> Na prática o sync do n8n não pagina: usa `limit=5000` e traz o catálogo do cliente inteiro
+> numa chamada só.
 
 ---
 
@@ -155,10 +147,9 @@ GET BASE/imoveis?finalidade=VENDA&limit=100&offset=200   → ...
 }
 ```
 
-> **Via cache-api (`:3001`)** o envelope traz `"origem": "cache"` e **não** traz `extraidoEm`/
-> `rejeitados`/`offset`. Quando o cache está vazio e cai para o scraper, devolve o envelope do
-> scraper (acima). Em **ambos** os casos os imóveis vêm em `imoveis[]`, no mesmo formato
-> `RecursoImovel`.
+> O sub-workflow do n8n (`[TOOL] buscar_imoveis`) devolve ao agente um envelope reduzido
+> (`{ evento, origem, total, imoveis }`), mas cada item de `imoveis[]` é o **mesmo**
+> `RecursoImovel` acima (é o `payload` gravado no banco).
 
 **Endpoint por referência:** `GET BASE/imoveis/{ref}` (ex.: `BASE/imoveis/1404`) devolve o(s)
 imóvel(is) dessa referência — um mesmo imóvel pode ter uma linha de `ALUGUER` **e** outra de
@@ -198,7 +189,7 @@ Nó **HTTP Request**:
 
 | Código | Significado | Causa típica |
 |---|---|---|
-| `400` | pedido inválido / cliente | filtro fora do permitido (`finalidade=XPTO`, `limit` fora de 1–500); `cliente` ausente (`CLIENTE_OBRIGATORIO`) ou fora do registro (`CLIENTE_DESCONHECIDO`) na scraper-api |
+| `400` | pedido inválido / cliente | filtro fora do permitido (`finalidade=XPTO`, `limit` fora de 1–5000); `cliente` ausente (`CLIENTE_OBRIGATORIO`) ou fora do registro (`CLIENTE_DESCONHECIDO`) |
 | `404` | não encontrado | `GET /imoveis/{ref}` com referência inexistente |
 | `503` | fonte indisponível | o site de origem não respondeu |
 | `504` | timeout da fonte | o site demorou demais |
@@ -210,6 +201,6 @@ Corpo dos erros: `{ "evento": "...", "erro": { "codigo": "...", "mensagem": "...
 
 ## 10. Autenticação
 
-Hoje **sem autenticação** na cache-api. A **scraper-api** exige `x-api-key` apenas se a
-`API_KEY` estiver ativada na instância — nesse caso envia o header `x-api-key: <valor>` em
-todas as chamadas (no n8n: aba **Headers** do nó HTTP Request).
+A **scraper-api** exige `x-api-key` quando a `API_KEY` está ativada na instância (em
+produção está) — envia o header `x-api-key: <valor>` em todas as chamadas. No n8n os
+workflows usam a credencial **Header Auth "Scraper Auth"** com essa chave.

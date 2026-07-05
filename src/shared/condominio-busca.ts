@@ -1,5 +1,5 @@
-// Busca por nome de condomínio — lógica COMPARTILHADA entre scraper-api (em memória)
-// e cache-api (SQL), para garantir paridade.
+// Busca por nome de condomínio. A consulta SQL equivalente vive no workflow n8n
+// [TOOL] buscar_imoveis — mudanças aqui precisam manter a paridade com lá.
 //
 // O nome do condomínio é não-padronizado: às vezes em campo estruturado
 // (namCondominium), às vezes só no título, no slug da URL ou na descrição. Por isso

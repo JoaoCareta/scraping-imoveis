@@ -1,5 +1,13 @@
 # Integração n8n — filtro por comodidades
 
+> ⚠️ **DESATUALIZADO (2026-07-05):** este guia descreve a arquitetura antiga (tool
+> HTTP direto + cache-api `:3001`, que foi **removida**). A tool `buscar_imoveis`
+> agora é um sub-workflow que consulta o banco (ver
+> [specs/2026-07-05-cache-no-n8n-design.md](superpowers/specs/2026-07-05-cache-no-n8n-design.md)
+> e [API.md](API.md)). O **vocabulário de slugs** da tabela abaixo continua válido
+> e é a parte que ainda vale ler; ignore os passos de configuração de nó HTTP e
+> os exemplos sem `?cliente=`.
+
 Guia para o agente n8n (`buscar_imoveis`) usar o novo filtro `comodidades` da API.
 O lado do scraper/cache está pronto; falta o n8n **passar o parâmetro** e o agente **falar o vocabulário certo**.
 

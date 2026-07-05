@@ -92,14 +92,13 @@ pela rede docker `n8n-ww9q_default` (criada pelo stack do n8n):
 | Stack | Onde vive (VPS) | Container(s) | Papel |
 |---|---|---|---|
 | traefik | `/docker/traefik` | `traefik-traefik-1` | Proxy reverso (rede host). TLS via Let's Encrypt; só roteia quem tem `traefik.enable=true`. |
-| n8n | `/docker/n8n-ww9q` | `n8n-ww9q-n8n-1` | Orquestra; **grava** no banco após ler do scraper. Cria a rede compartilhada. |
-| este repo | `/root/scraping-imoveis` | `scraper-api`, `cache-api` | `scraper-api` só **lê** da fonte (Solr), stateless. `cache-api` lê o catálogo no banco. |
-| `db/docker-compose.yml` | (pendente na VPS nova) | `inove-postgres` | Banco. **Grava:** n8n · **Lê:** cache-api. O scraper NÃO toca aqui. |
+| n8n | `/docker/n8n-ww9q` | `n8n-ww9q-n8n-1` | Orquestra e é o **dono do cache**: consulta o banco primeiro e, no miss/sync, chama o scraper e **grava** o resultado. |
+| este repo | `/root/scraping-imoveis` | `scraper-api` | Só **scraping**, stateless — coleta ao vivo da fonte de cada cliente. Sem banco, sem cache. |
+| `db/docker-compose.yml` | (pendente na VPS nova) | `inove-postgres` | Banco. **Grava/Lê:** n8n (catálogo `imovel`, chat memory, conversas). O scraper NÃO toca aqui. |
 
 Rotas públicas (via Traefik, HTTPS automático):
 
 - `https://scraper.srv1800774.hstgr.cloud` → `scraper-api` (porta interna 3000)
-- `https://cache.srv1800774.hstgr.cloud` → `cache-api` (porta interna 3001)
 
 Primeira instalação na VPS (uma vez só):
 
@@ -128,13 +127,10 @@ git fetch origin main && git reset --hard origin/main
 bash scripts/deploy.sh                       # NÃO repetir o cp do .env — sobrescreveria o real
 ```
 
-Confirmar: `curl https://scraper.srv1800774.hstgr.cloud/health` e
-`https://cache.srv1800774.hstgr.cloud/health` (ou, direto no host, `:3000` / `:3001`).
+Confirmar: `curl https://scraper.srv1800774.hstgr.cloud/health` (ou, direto no host, `:3000`).
 
-Autenticação: preencher `API_KEY` no `.env` protege **apenas o scraper-api**
-(header `x-api-key`). A **cache-api não tem autenticação** — as rotas públicas dela
-ficam abertas — e as chamadas internas dela ao scraper não enviam `x-api-key`;
-ou seja, ativar a `API_KEY` hoje quebra o warm-up e o fallback cache-miss até a
-cache-api ganhar suporte à chave.
+Autenticação: preencher `API_KEY` no `.env` ativa o header `x-api-key` no scraper-api.
+Os workflows do n8n que chamam o scraper ([TOOL] buscar_imoveis e [SYNC] Catalogo imoveis)
+usam a credencial "Scraper Auth" com essa mesma chave.
 Dentro da rede `n8n-ww9q_default`, os serviços se alcançam pelo nome do container
 (`http://scraper-api:3000`, `inove-postgres:5432`).

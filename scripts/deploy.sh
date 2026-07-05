@@ -11,7 +11,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> build + up (sem --build o compose reusa a imagem velha)"
-docker compose up -d --build
+# --remove-orphans: derruba containers de serviços que saíram do compose
+# (ex.: o antigo cache-api — senão ele fica de zumbi com rota no Traefik).
+docker compose up -d --build --remove-orphans
 
 # O Traefik só roteia containers com healthcheck "healthy"; logo após o up
 # existe uma janela de ~30-60s em "starting". Esperamos ficar saudável.
@@ -30,9 +32,7 @@ espera_200() {
 }
 
 espera_200 "scraper (direto :3000)"  "http://127.0.0.1:3000/health"
-espera_200 "cache   (direto :3001)"  "http://127.0.0.1:3001/health"
 espera_200 "scraper (via traefik)"   "https://scraper.srv1800774.hstgr.cloud/health"
-espera_200 "cache   (via traefik)"   "https://cache.srv1800774.hstgr.cloud/health"
 
 # Cada build deixa a imagem anterior dangling; sem prune o disco da VPS enche.
 docker image prune -f >/dev/null

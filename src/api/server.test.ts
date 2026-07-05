@@ -149,6 +149,19 @@ describe("servidor", () => {
     expect(body.imoveis.map((i: { ref: string }) => i.ref)).toEqual(["2", "3"])
   })
 
+  it("aceita limit=5000 (sync do n8n puxa o catálogo inteiro numa chamada)", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&limit=5000" })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().limit).toBe(5000)
+  })
+
+  it("rejeita limit acima do teto (5001 → 400)", async () => {
+    const app = criarServidor(registroFake(), CONFIG_BASE)
+    const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&limit=5001" })
+    expect(res.statusCode).toBe(400)
+  })
+
   it("ignora query params vazios em vez de dar 400", async () => {
     const app = criarServidor(registroFake(), CONFIG_BASE)
     const res = await app.inject({ method: "GET", url: "/imoveis?cliente=innove&finalidade=&bairro=&precoMax=2000" })

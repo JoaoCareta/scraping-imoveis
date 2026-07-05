@@ -44,7 +44,8 @@ const SCHEMA_IMOVEIS = {
       ativo: { type: "boolean" },
       comodidades: { type: "string" },
       condominio: { type: "string" },
-      limit: { type: "integer", minimum: 1, maximum: 500, default: 100 },
+      // Teto alto: o sync do n8n puxa o catálogo inteiro do cliente numa chamada só.
+      limit: { type: "integer", minimum: 1, maximum: 5000, default: 100 },
       offset: { type: "integer", minimum: 0, default: 0 },
     },
   },

@@ -9,7 +9,9 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS btree_gin;
 
 -- =========================================================
--- ① Catálogo de imóveis (cache do scraper-api) — multi-tenant
+-- ① Catálogo de imóveis — multi-tenant. Populado pelo n8n
+--    ([SYNC] Catalogo imoveis, 30 min + cache-miss da tool
+--    buscar_imoveis); lido pelas buscas do bot.
 -- =========================================================
 CREATE TABLE IF NOT EXISTS imovel (
   cliente_id      TEXT NOT NULL,            -- tenant: 'innove', 'caires', ...

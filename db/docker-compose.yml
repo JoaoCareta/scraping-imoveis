@@ -1,13 +1,13 @@
 # Banco de dados Inove — stack SEPARADO do scraper.
 #
 # Responsabilidades:
-#   - O scraper-api SÓ LÊ imóveis da fonte (Solr). Não toca neste banco.
-#   - O n8n é quem GRAVA aqui (cache do catálogo + conversas + avaliações),
-#     APÓS ler do scraper.
-#   - A cache-api LÊ este banco (e ESCREVE no warm-up de boot — pre-load de clientes).
+#   - O scraper-api SÓ faz scraping das fontes. Não toca neste banco.
+#   - O n8n é o DONO do banco: grava o catálogo (workflow [SYNC] a cada 30 min e no
+#     cache-miss da tool buscar_imoveis) e lê nas buscas do bot; também guarda chat
+#     memory, conversas e avaliações.
 #
 # Rede: usa a rede compartilhada n8n-ww9q_default (criada pelo stack do n8n na VPS,
-# /docker/n8n-ww9q) para que n8n e cache-api alcancem o banco pelo nome do container
+# /docker/n8n-ww9q) para que o n8n alcance o banco pelo nome do container
 # (inove-postgres). Para ESTE compose ela é externa: precisa já existir.
 #
 # ATENÇÃO (migração da VPS antiga): este stack ainda NÃO está no ar na VPS nova
