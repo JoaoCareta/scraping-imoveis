@@ -13,18 +13,32 @@ export function slugKenlo(s: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-// Mapa curado (slug → grupo). Pequeno e incremental; começa pelos conceitos
-// mais pedidos. Ampliar conforme aparecem novos rótulos no caires.
+// Mapa curado (slug do rótulo Kenlo → grupo). O GRUPO precisa usar o MESMO
+// vocabulário de slugs que o system prompt do bot manda no parâmetro
+// comodidades da busca (sacada, academia, espaco-gourmet, ...) — a busca por
+// containment só casa se o grupo cair nesse vocabulário. Ampliar conforme
+// aparecem novos rótulos no caires.
 const GRUPOS: Record<string, string> = {
   piscina: "piscina",
   churrasqueira: "churrasqueira",
-  sacada: "sacada-varanda",
-  varanda: "sacada-varanda",
-  "varanda-gourmet": "sacada-varanda",
+  sacada: "sacada",
+  varanda: "sacada",
+  "varanda-gourmet": "sacada",
   elevador: "elevador",
+  portaria: "portaria",
   "portaria-24-horas": "portaria",
-  academia: "lazer",
-  "salao-de-festas": "lazer",
+  academia: "academia",
+  "salao-de-festas": "salao-de-festas",
+  "espaco-gourmet": "espaco-gourmet",
+  "salao-gourmet": "espaco-gourmet",
+  "area-de-lazer": "area-de-lazer",
+  "ar-condicionado": "ar-condicionado",
+  playground: "playground",
+  quadra: "quadra-poliesportiva",
+  "quadra-poliesportiva": "quadra-poliesportiva",
+  sauna: "sauna",
+  "pet-place": "pet-place",
+  "condominio-fechado": "condominio-fechado",
   "area-de-servico": "area-de-servico",
 }
 
